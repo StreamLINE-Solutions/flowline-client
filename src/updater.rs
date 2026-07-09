@@ -1,8 +1,8 @@
-use crate::{common::do_check_software_update, hbbs_http::create_http_client_with_url};
+use crate::{common::do_check_software_update, hbbs_http::create_http_client_with_url_strict};
 use hbb_common::{anyhow, bail, config, log, ResultType};
 use std::{
     io::Write,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
     sync::{
         atomic::{AtomicUsize, Ordering},
         mpsc::{channel, Receiver, Sender},
@@ -163,7 +163,7 @@ fn check_update(manually: bool) -> ResultType<()> {
             format!("{}/rustdesk-{}-x86-sciter.exe", download_url, version)
         };
         log::debug!("New version available: {}", &version);
-        let client = create_http_client_with_url(&download_url);
+        let client = create_http_client_with_url_strict(&download_url)?;
         let Some(file_path) = get_download_file_from_url(&download_url) else {
             bail!("Failed to get the file path from the URL: {}", download_url);
         };
@@ -312,8 +312,33 @@ fn update_new_version(update_msi: bool, version: &str, file_path: &PathBuf) {
     }
 }
 
+/// Nom de fichier de MAJ « simple » : un seul composant normal, pas de
+/// séparateur, pas de deux-points (rejette vide, `..`, `.`, drive Windows).
+fn is_plain_update_filename(filename: &str) -> bool {
+    if filename.is_empty()
+        || filename.contains('/')
+        || filename.contains('\\')
+        || filename.contains(':')
+    {
+        return false;
+    }
+
+    let mut components = Path::new(filename).components();
+    matches!(
+        components.next(),
+        Some(Component::Normal(name)) if name.to_str() == Some(filename)
+    ) && components.next().is_none()
+}
+
+/// Chemin local (temp dir) dérivé de l'URL de téléchargement de la MAJ.
+/// Le nom de fichier est validé (pas de traversée) ; notre canal de MAJ est
+/// le serveur FlowLINE (pas GitHub), le TLS est forcé par les appelants via
+/// le client strict.
 pub fn get_download_file_from_url(url: &str) -> Option<PathBuf> {
-    let filename = url.split('/').last()?;
+    let filename = url.rsplit('/').next()?;
+    if !is_plain_update_filename(filename) {
+        return None;
+    }
     Some(std::env::temp_dir().join(filename))
 }
 
@@ -350,7 +375,7 @@ pub fn fetch_and_verify_update_manifest(
 ) -> ResultType<()> {
     let manifest_url = manifest_url_from_download_url(download_url)
         .ok_or_else(|| anyhow::anyhow!("URL de manifeste introuvable: {download_url}"))?;
-    let client = create_http_client_with_url(&manifest_url);
+    let client = create_http_client_with_url_strict(&manifest_url)?;
     let response = client.get(&manifest_url).send()?;
     if !response.status().is_success() {
         bail!(
@@ -402,7 +427,7 @@ pub fn download_verified_linux_deb(version: &str) -> ResultType<PathBuf> {
     })?;
     let download_url = format!("{FLOWLINE_DOWNLOADS_BASE}/{file_name}");
     let path = std::env::temp_dir().join(&file_name);
-    let client = create_http_client_with_url(&download_url);
+    let client = create_http_client_with_url_strict(&download_url)?;
     let mut need_download = true;
     if path.exists() {
         // Même taille que sur le serveur => pas besoin de retélécharger (la
@@ -565,10 +590,11 @@ fn install_linux_deb(path: &Path) -> ResultType<()> {
     }
 }
 
-#[cfg(all(test, target_os = "linux"))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn classify_pkexec_no_agent() {
         assert_eq!(classify_pkexec_failure(Some(127), ""), "no-agent");
@@ -581,6 +607,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn classify_pkexec_cancelled() {
         assert_eq!(
@@ -592,6 +619,7 @@ mod tests {
         );
     }
 
+    #[cfg(target_os = "linux")]
     #[test]
     fn classify_pkexec_failed() {
         assert_eq!(
@@ -599,5 +627,30 @@ mod tests {
             "failed"
         );
         assert_eq!(classify_pkexec_failure(None, ""), "failed");
+    }
+
+    #[test]
+    fn update_download_file_extracts_plain_filename() {
+        let file = get_download_file_from_url(
+            "https://api-falcon.my-vth.ch/api/update/download/1.4.24/flowline-1.4.24-x86_64.msi",
+        )
+        .expect("URL de MAJ valide");
+        assert_eq!(
+            file.file_name().and_then(|name| name.to_str()),
+            Some("flowline-1.4.24-x86_64.msi")
+        );
+    }
+
+    #[test]
+    fn update_download_file_rejects_unsafe_filenames() {
+        for url in [
+            "https://api-falcon.my-vth.ch/api/update/download/1.4.24/",
+            "https://api-falcon.my-vth.ch/api/update/download/1.4.24/C:flowline.msi",
+            "https://api-falcon.my-vth.ch/api/update/download/1.4.24/dir\\flowline.msi",
+            "https://api-falcon.my-vth.ch/api/update/download/1.4.24/..",
+            "https://api-falcon.my-vth.ch/api/update/download/1.4.24/.",
+        ] {
+            assert!(get_download_file_from_url(url).is_none(), "{url}");
+        }
     }
 }
