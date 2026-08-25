@@ -2,7 +2,7 @@ name: Build FalconQS macOS
 
 on:
   push:
-    branches: [falconqs-rebrand, main, macos-ci]
+    branches: [main]
   workflow_dispatch:
 
 env:
