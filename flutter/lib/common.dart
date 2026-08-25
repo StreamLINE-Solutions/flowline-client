@@ -454,7 +454,7 @@ class MyTheme {
         style:
             MenuStyle(backgroundColor: MaterialStatePropertyAll(Colors.white))),
     colorScheme: ColorScheme.light(
-        primary: Colors.blue, secondary: accent, background: grayBg),
+        primary: Color(0xFF685BFB), secondary: Color(0xFF4FA5FB), background: grayBg),
     popupMenuTheme: PopupMenuThemeData(
         color: Colors.white,
         shape: RoundedRectangleBorder(
@@ -562,8 +562,8 @@ class MyTheme {
         style: MenuStyle(
             backgroundColor: MaterialStatePropertyAll(Color(0xFF121212)))),
     colorScheme: ColorScheme.dark(
-      primary: Colors.blue,
-      secondary: accent,
+      primary: Color(0xFF685BFB),
+      secondary: Color(0xFF4FA5FB),
       background: Color(0xFF24252B),
     ),
     popupMenuTheme: PopupMenuThemeData(
@@ -599,17 +599,8 @@ class MyTheme {
   }
 
   static ThemeMode currentThemeMode() {
-    final preference = getThemeModePreference();
-    if (preference == ThemeMode.system) {
-      if (WidgetsBinding.instance.platformDispatcher.platformBrightness ==
-          Brightness.light) {
-        return ThemeMode.light;
-      } else {
-        return ThemeMode.dark;
-      }
-    } else {
-      return preference;
-    }
+    // FalconQS white-label : theme sombre uniquement (une seule variante a maintenir).
+    return ThemeMode.dark;
   }
 
   static ColorThemeExtension color(BuildContext context) {
@@ -3737,27 +3728,8 @@ Color? disabledTextColor(BuildContext context, bool enabled) {
 }
 
 Widget loadPowered(BuildContext context) {
-  if (bind.mainGetBuildinOption(key: "hide-powered-by-me") == 'Y') {
-    return SizedBox.shrink();
-  }
-  return MouseRegion(
-    cursor: SystemMouseCursors.click,
-    child: GestureDetector(
-      onTap: () {
-        launchUrl(Uri.parse('https://rustdesk.com'));
-      },
-      child: Opacity(
-          opacity: 0.5,
-          child: Text(
-            translate("powered_by_me"),
-            overflow: TextOverflow.clip,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(fontSize: 9, decoration: TextDecoration.underline),
-          )),
-    ),
-  ).marginOnly(top: 6);
+  // FalconQS white-label: attribution "Powered by RustDesk" masquee.
+  return SizedBox.shrink();
 }
 
 const _kDefaultLogoAsset = 'assets/logo.png';
