@@ -1,8 +1,8 @@
 name: Build FalconQS macOS
 
 on:
-  push:
-    branches: [main]
+  # macOS build désactivé pour le moment (runners macOS facturés).
+  # Réactiver en ré-ajoutant: push: branches: [main]
   workflow_dispatch:
 
 env:
@@ -16,6 +16,7 @@ env:
 jobs:
   generate-bridge:
     uses: ./.github/workflows/bridge.yml
+    secrets: inherit
 
   build-macos:
     name: ${{ matrix.job.target }}

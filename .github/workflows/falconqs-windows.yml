@@ -17,6 +17,7 @@ env:
 jobs:
   generate-bridge:
     uses: ./.github/workflows/bridge.yml
+    secrets: inherit
 
   build-windows-x64:
     name: x86_64-pc-windows-msvc
