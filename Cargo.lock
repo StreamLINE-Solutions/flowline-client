@@ -7248,7 +7248,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "falconqs"
+name = "rustdesk"
 version = "1.4.9"
 dependencies = [
  "android-wakelock",

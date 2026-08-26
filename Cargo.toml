@@ -1,11 +1,11 @@
 [package]
-name = "falconqs"
+name = "rustdesk"
 version = "1.4.9"
 authors = ["rustdesk <info@rustdesk.com>"]
 edition = "2021"
 build= "build.rs"
 description = "FalconQS Remote Desktop (rebrand RustDesk 1.4.9)"
-default-run = "falconqs"
+default-run = "rustdesk"
 rust-version = "1.75"
 
 [lib]
