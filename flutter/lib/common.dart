@@ -3786,7 +3786,7 @@ class _LogoState extends State<_Logo> {
             },
           );
           return Container(
-            constraints: BoxConstraints(maxWidth: 300, maxHeight: 60),
+            constraints: BoxConstraints(maxWidth: 200, maxHeight: 40),
             child: image,
           ).marginOnly(left: 12, right: 12, top: 12);
         }
