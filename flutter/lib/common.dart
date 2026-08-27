@@ -454,7 +454,7 @@ class MyTheme {
         style:
             MenuStyle(backgroundColor: MaterialStatePropertyAll(Colors.white))),
     colorScheme: ColorScheme.light(
-        primary: Color(0xFF685BFB), secondary: Color(0xFF4FA5FB), background: grayBg),
+        primary: Color(0xFF2067FC), secondary: Color(0xFF16A4FD), background: grayBg),
     popupMenuTheme: PopupMenuThemeData(
         color: Colors.white,
         shape: RoundedRectangleBorder(
@@ -562,8 +562,8 @@ class MyTheme {
         style: MenuStyle(
             backgroundColor: MaterialStatePropertyAll(Color(0xFF121212)))),
     colorScheme: ColorScheme.dark(
-      primary: Color(0xFF685BFB),
-      secondary: Color(0xFF4FA5FB),
+      primary: Color(0xFF2067FC),
+      secondary: Color(0xFF16A4FD),
       background: Color(0xFF24252B),
     ),
     popupMenuTheme: PopupMenuThemeData(
@@ -599,7 +599,7 @@ class MyTheme {
   }
 
   static ThemeMode currentThemeMode() {
-    // FalconQS white-label : theme sombre uniquement (une seule variante a maintenir).
+    // FlowLINE white-label : theme sombre uniquement (une seule variante a maintenir).
     return ThemeMode.dark;
   }
 
@@ -3728,7 +3728,7 @@ Color? disabledTextColor(BuildContext context, bool enabled) {
 }
 
 Widget loadPowered(BuildContext context) {
-  // FalconQS white-label: attribution "Powered by RustDesk" masquee.
+  // FlowLINE white-label: attribution "Powered by RustDesk" masquee.
   return SizedBox.shrink();
 }
 

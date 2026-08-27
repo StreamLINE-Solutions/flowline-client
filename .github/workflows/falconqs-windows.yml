@@ -1,4 +1,4 @@
-name: Build FalconQS Windows x64
+name: Build FlowLINE Windows x64
 
 on:
   push:
@@ -110,7 +110,7 @@ jobs:
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-x64-windows-static-rel-out.log" || true
         shell: bash
 
-      - name: Build FalconQS (rustdesk)
+      - name: Build FlowLINE (rustdesk)
         run: |
           python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
@@ -118,6 +118,6 @@ jobs:
       - name: Upload unsigned artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: falconqs-unsigned-windows-x64-${{ env.VERSION }}
+          name: flowline-unsigned-windows-x64-${{ env.VERSION }}
           path: rustdesk
           retention-days: 30
