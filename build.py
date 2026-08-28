@@ -278,6 +278,8 @@ def get_features(args):
         features.append('hwcodec')
     if args.vram:
         features.append('vram')
+    if os.environ.get('FLOWLINE_QUICK_SUPPORT') == '1':
+        features.append('quick-support')
     if args.flutter:
         features.append('flutter')
     if args.unix_file_copy_paste:

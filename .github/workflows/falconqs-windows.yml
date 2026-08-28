@@ -20,9 +20,19 @@ jobs:
     secrets: inherit
 
   build-windows-x64:
-    name: x86_64-pc-windows-msvc
+    name: ${{ matrix.name }} (x86_64-pc-windows-msvc)
     needs: [generate-bridge]
     runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: flowline
+            quick_support: "0"
+            artifact_name: flowline-unsigned-windows-x64
+          - name: flowline-support
+            quick_support: "1"
+            artifact_name: flowline-support-unsigned-windows-x64
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
@@ -111,13 +121,18 @@ jobs:
         shell: bash
 
       - name: Build FlowLINE (rustdesk)
+        env:
+          FLOWLINE_QUICK_SUPPORT: ${{ matrix.quick_support }}
         run: |
           python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
+          if "${{ matrix.quick_support }}" == "1"; then
+            mv ./rustdesk/flowline.exe ./rustdesk/flowline-support.exe
+          fi
 
       - name: Upload unsigned artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: flowline-unsigned-windows-x64-${{ env.VERSION }}
+          name: ${{ matrix.artifact_name }}-${{ env.VERSION }}
           path: rustdesk
           retention-days: 30
