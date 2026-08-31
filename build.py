@@ -341,8 +341,6 @@ def build_flutter_deb(version, features):
     system2(
         'cp ../res/128x128@2x.png tmpdeb/usr/share/icons/hicolor/256x256/apps/flowline.png')
     system2(
-        'cp ../res/scalable.svg tmpdeb/usr/share/icons/hicolor/scalable/apps/flowline.svg')
-    system2(
         'cp ../res/flowline.desktop tmpdeb/usr/share/applications/flowline.desktop')
     system2(
         'cp ../res/flowline-link.desktop tmpdeb/usr/share/applications/flowline-link.desktop')
@@ -383,8 +381,6 @@ def build_deb_from_folder(version, binary_folder):
         'cp ../res/flowline.service tmpdeb/usr/share/flowline/files/systemd/')
     system2(
         'cp ../res/128x128@2x.png tmpdeb/usr/share/icons/hicolor/256x256/apps/flowline.png')
-    system2(
-        'cp ../res/scalable.svg tmpdeb/usr/share/icons/hicolor/scalable/apps/flowline.svg')
     system2(
         'cp ../res/flowline.desktop tmpdeb/usr/share/applications/flowline.desktop')
     system2(
