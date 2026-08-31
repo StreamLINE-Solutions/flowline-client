@@ -1,8 +1,9 @@
 name: Build FlowLINE Linux x64
 
 on:
-  push:
-    branches: [main]
+  # Build déclenché MANUELLEMENT (workflow_dispatch) : le push sur main ne
+  # rebuild plus automatiquement. Lancer depuis GitHub Actions → "Run
+  # workflow" → branche main quand un build est voulu.
   workflow_dispatch:
 
 env:
@@ -49,6 +50,12 @@ jobs:
         with:
           name: bridge-artifact
           path: ./
+
+      - name: Install libunwind-dev first
+        # Résout un conflit apt connu sur les runners ubuntu-22.04 : installé en
+        # premier, libunwind-dev passe. En résolution groupée avec gstreamer, apt
+        # échoue avec "held broken packages" (libgstreamer1.0-dev Depends libunwind-dev).
+        run: sudo apt-get install -y --no-install-recommends libunwind-dev
 
       - name: Install apt dependencies
         run: |

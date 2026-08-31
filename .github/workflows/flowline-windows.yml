@@ -1,8 +1,9 @@
 name: Build FlowLINE Windows x64
 
 on:
-  push:
-    branches: [main]
+  # Build déclenché MANUELLEMENT (workflow_dispatch) : le push sur main ne
+  # rebuild plus Windows automatiquement (40 min par push). Lancer depuis
+  # GitHub Actions → "Run workflow" → branche main quand un build est voulu.
   workflow_dispatch:
 
 env:
