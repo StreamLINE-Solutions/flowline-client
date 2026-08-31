@@ -1,0 +1,150 @@
+name: Build FlowLINE Linux x64
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  RUST_VERSION: "1.75"
+  FLUTTER_VERSION: "3.24.5"
+  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+  VERSION: "1.4.9"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  generate-bridge:
+    uses: ./.github/workflows/bridge.yml
+    secrets: inherit
+
+  build-linux-x64:
+    name: ${{ matrix.name }} (x86_64-unknown-linux-gnu)
+    needs: [generate-bridge]
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: flowline
+            quick_support: "0"
+            artifact_name: flowline-unsigned-linux-x64
+          - name: flowline-support
+            quick_support: "1"
+            artifact_name: flowline-support-unsigned-linux-x64
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          submodules: recursive
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - name: Install apt dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            clang \
+            cmake \
+            curl \
+            gcc \
+            git \
+            g++ \
+            libappindicator3-dev \
+            libasound2-dev \
+            libclang-dev \
+            libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev \
+            libgtk-3-dev \
+            libpam0g-dev \
+            libpulse-dev \
+            libva-dev \
+            libvdpau-dev \
+            libxcb-randr0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxdo-dev \
+            libxfixes-dev \
+            llvm-dev \
+            nasm \
+            ninja-build \
+            pkg-config \
+            wget \
+            yasm
+
+      - name: Install flutter
+        uses: subosito/flutter-action@2783a3f08e1baf891508463f8c6653c258246225 # v2.12.0
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          architecture: x64
+
+      - name: Patch flutter
+        shell: bash
+        run: |
+          cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff $(dirname $(dirname $(which flutter)))
+          cd $(dirname $(dirname $(which flutter)))
+          [[ "3.24.5" == ${{env.FLUTTER_VERSION}} ]] && git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: x86_64-unknown-linux-gnu
+          components: "rustfmt"
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          prefix-key: linux-x64
+
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11
+        with:
+          vcpkgDirectory: /opt/artifacts/vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        run: |
+          if ! $VCPKG_ROOT/vcpkg \
+            install \
+            --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+              echo "$_1:"
+              echo "======"
+              cat "$_1"
+              echo "======"
+            done
+            exit 1
+          fi
+        shell: bash
+
+      - name: Build FlowLINE (rustdesk)
+        env:
+          FLOWLINE_QUICK_SUPPORT: ${{ matrix.quick_support }}
+        run: |
+          ./build.py --flutter --hwcodec --unix-file-copy-paste
+          DEB="rustdesk-${{ env.VERSION }}.deb"
+          if [ "${{ matrix.quick_support }}" = "1" ]; then
+            NEW="flowline-support-${{ env.VERSION }}.deb"
+          else
+            NEW="flowline-${{ env.VERSION }}.deb"
+          fi
+          mv "$DEB" "$NEW"
+
+      - name: Upload unsigned artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact_name }}-${{ env.VERSION }}
+          path: flowline*-${{ env.VERSION }}.deb
+          retention-days: 30
