@@ -141,13 +141,11 @@ jobs:
           FLOWLINE_QUICK_SUPPORT: ${{ matrix.quick_support }}
         run: |
           ./build.py --flutter --hwcodec --unix-file-copy-paste
-          DEB="rustdesk-${{ env.VERSION }}.deb"
+          # build.py produit flowline-1.4.9.deb (renommé flowline-support-1.4.9.deb
+          # pour le variant support, pour distinguer les 2 artifacts).
           if [ "${{ matrix.quick_support }}" = "1" ]; then
-            NEW="flowline-support-${{ env.VERSION }}.deb"
-          else
-            NEW="flowline-${{ env.VERSION }}.deb"
+            mv "flowline-${{ env.VERSION }}.deb" "flowline-support-${{ env.VERSION }}.deb"
           fi
-          mv "$DEB" "$NEW"
 
       - name: Upload unsigned artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

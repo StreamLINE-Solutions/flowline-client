@@ -1,0 +1,19 @@
+[Desktop Entry]
+Name=FlowLINE
+GenericName=Remote Control
+Comment=Remote Control
+Exec=flowline %u
+Icon=flowline
+Terminal=false
+Type=Application
+StartupNotify=true
+Categories=Network;RemoteAccess;GTK;
+Keywords=internet;linux;dart;rust;remote-control;p2p;teamviewer;rust-lang;rdp;remote-desktop;vnc;
+Actions=new-window;
+StartupWMClass=flowline
+
+X-Desktop-File-Install-Version=0.23
+
+[Desktop Action new-window]
+Name=Open a New Window
+Exec=flowline %u

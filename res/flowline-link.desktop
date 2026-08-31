@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=FlowLINE
+NoDisplay=true
+MimeType=x-scheme-handler/flowline;
+TryExec=flowline
+Exec=flowline %u
+Icon=flowline
+Terminal=false
+Type=Application
+StartupNotify=false
+StartupWMClass=flowline
