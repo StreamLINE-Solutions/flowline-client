@@ -16,6 +16,7 @@ import 'package:flutter_hbb/models/peer_model.dart';
 
 import '../../common.dart';
 import '../../common/formatter/id_formatter.dart';
+import '../../common/widgets/login.dart';
 import '../../common/widgets/peer_tab_page.dart';
 import '../../common/widgets/autocomplete.dart';
 import '../../models/platform_model.dart';
@@ -155,16 +156,30 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
 
   _buildConnStatusMsg() {
     widget.onSvcStatusChanged?.call();
-    return Text(
-      _svcStopped.value
-          ? translate("Service is not running")
-          : stateGlobal.svcStatus.value == SvcStatus.connecting
-              ? translate("connecting_status")
-              : stateGlobal.svcStatus.value == SvcStatus.notReady
-                  ? translate("not_ready_status")
-                  : translate('Ready'),
-      style: TextStyle(fontSize: em),
-    );
+    // FlowLINE build technicien : le signal "prêt" exige un login compte.
+    // Le build support (incoming-only) n'est pas concerné.
+    final requireLogin = !bind.isIncomingOnly() && !gFFI.userModel.isLogin;
+    return requireLogin
+        ? GestureDetector(
+            onTap: loginDialog,
+            child: Text(
+              translate("Connect your account to offer support"),
+              style: TextStyle(
+                  fontSize: em,
+                  decoration: TextDecoration.underline,
+                  color: Theme.of(context).colorScheme.primary),
+            ),
+          )
+        : Text(
+            _svcStopped.value
+                ? translate("Service is not running")
+                : stateGlobal.svcStatus.value == SvcStatus.connecting
+                    ? translate("connecting_status")
+                    : stateGlobal.svcStatus.value == SvcStatus.notReady
+                        ? translate("not_ready_status")
+                        : translate('Ready'),
+            style: TextStyle(fontSize: em),
+          );
   }
 
   updateStatus() async {
