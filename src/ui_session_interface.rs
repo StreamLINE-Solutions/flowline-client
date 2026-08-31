@@ -1950,7 +1950,12 @@ pub async fn io_loop<T: InvokeUiSession>(handler: Session<T>, round: u32) {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     let (sender, mut receiver) = mpsc::unbounded_channel::<Data>();
     *handler.sender.write().unwrap() = Some(sender.clone());
-    let token = LocalConfig::get_option("access_token");
+    // FlowLINE : le login compte (0019) est un login API, pas un login OAuth
+    // session. Le access_token ne doit pas être injecté comme token de session :
+    // il déclencherait un secure_tcp (handshake chiffré) vers le rendezvous que
+    // le hbbs OSS (1.1.16) ne supporte pas (ferme la connexion -> timeout 18s).
+    // Le token d'API reste utilisé pour le heartbeat/API, pas pour les sessions.
+    let token = "".to_owned();
     let key = crate::get_key(false).await;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if handler.is_port_forward() {

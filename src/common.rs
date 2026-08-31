@@ -1080,6 +1080,17 @@ fn get_api_server_(api: String, custom: String) -> String {
             return format!("http://{}", s);
         }
     }
+    // FlowLINE white-label : dériver l'API depuis le rendezvous configuré (falcon)
+    // au lieu de retomber sur l'API publique RustDesk.
+    let rs = Config::get_rendezvous_server();
+    if !rs.is_empty() && !is_public(&rs) {
+        let s = crate::increase_port(&rs, -2);
+        if s == rs {
+            return format!("http://{}:{}", rs, RENDEZVOUS_PORT - 2);
+        } else {
+            return format!("http://{}", s);
+        }
+    }
     "https://admin.rustdesk.com".to_owned()
 }
 
