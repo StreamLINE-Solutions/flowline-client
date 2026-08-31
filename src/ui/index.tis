@@ -30,6 +30,7 @@ if (incoming_only) {
 var app;
 var tmp = handler.get_connect_status();
 var connect_status = tmp[0];
+var account_logged = handler.is_account_logged();
 var service_stopped = handler.get_option("stop-service") == "Y";
 var disable_udp = handler.get_option("disable-udp") == "Y";
 var using_public_server = handler.using_public_server();
@@ -84,12 +85,20 @@ class ConnectStatus: Reactor.Component {
         } else if (connect_status == 0) {
             return translate('connecting_status');
         }
+        // FlowLINE build technicien : le signal "prêt" exige un login compte.
+        if (!incoming_only && !account_logged) {
+            return <span #account-login-required class="connect-status-account link">{translate("Connect your account to offer support")}</span>;
+        }
         if (!handler.using_public_server()) return translate('Ready');
         return <span>{translate("Ready")}, <span .link #setup-server>{translate("setup_server_tip")}</span></span>;
     }
 
     event click $(#start-service) () {
         handler.set_option("stop-service", "");
+    }
+
+    event click $(#account-login-required) () {
+        login();
     }
 
     event click $(#setup-server) () {
@@ -1425,6 +1434,12 @@ function checkConnectStatus() {
         tmp = handler.using_public_server();
         if (tmp != using_public_server) {
             using_public_server = tmp;
+            app.connect_status.update();
+        }
+        // FlowLINE : rafraîchit l'état "connecté au compte" (login/logout).
+        var account_logged_now = handler.is_account_logged();
+        if (account_logged_now != account_logged) {
+            account_logged = account_logged_now;
             app.connect_status.update();
         }
         tmp = handler.get_connect_status();

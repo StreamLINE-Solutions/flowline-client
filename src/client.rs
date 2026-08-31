@@ -255,6 +255,11 @@ impl Client {
         if config::is_incoming_only() {
             bail!("Incoming only mode");
         }
+        // FlowLINE build technicien : le support sortant exige un login compte
+        // (le build QuickSupport / incoming-only n'est pas concerné).
+        if !config::is_incoming_only() && !config::is_account_logged() {
+            bail!("Login required");
+        }
         // to-do: remember the port for each peer, so that we can retry easier
         if hbb_common::is_ip_str(peer) {
             return Ok((

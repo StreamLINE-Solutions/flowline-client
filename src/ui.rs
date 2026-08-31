@@ -292,6 +292,12 @@ impl UI {
         hbb_common::config::is_incoming_only()
     }
 
+    fn is_account_logged(&self) -> bool {
+        // FlowLINE : l'état "connecté au compte" = présence d'un access_token
+        // persisté (écrit par le flux OIDC lors du login Compte -> Connexion).
+        !hbb_common::config::LocalConfig::get_option("access_token").is_empty()
+    }
+
     pub fn is_outgoing_only(&self) -> bool {
         hbb_common::config::is_outgoing_only()
     }
@@ -732,6 +738,7 @@ impl sciter::EventHandler for UI {
         fn is_disable_account();
         fn is_disable_installation();
         fn is_disable_ab();
+        fn is_account_logged();
         fn get_id();
         fn temporary_password();
         fn update_temporary_password();
