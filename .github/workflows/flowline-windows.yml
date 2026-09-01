@@ -19,6 +19,8 @@ env:
   # manuel, champ "env" du job). Valeurs par défaut = infra falcon.
   RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
   RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
+  # API compte FlowLINE (TLS via NPM). Surchargeable au dispatch.
+  FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
 
 jobs:
   generate-bridge:
@@ -130,6 +132,7 @@ jobs:
           FLOWLINE_QUICK_SUPPORT: ${{ matrix.quick_support }}
           RUSTDESK_RENDEZVOUS_SERVERS: ${{ env.RUSTDESK_RENDEZVOUS_SERVERS }}
           RUSTDESK_RS_PUB_KEY: ${{ env.RUSTDESK_RS_PUB_KEY }}
+          FLOWLINE_API_SERVER: ${{ env.FLOWLINE_API_SERVER }}
         run: |
           python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk

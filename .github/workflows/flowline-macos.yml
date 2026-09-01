@@ -16,6 +16,7 @@ env:
   # publique. Déployer vers une autre infra = surcharger ces 2 vars. Défaut falcon.
   RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
   RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
+  FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
 
 jobs:
   generate-bridge:
@@ -123,6 +124,7 @@ jobs:
         env:
           RUSTDESK_RENDEZVOUS_SERVERS: ${{ env.RUSTDESK_RENDEZVOUS_SERVERS }}
           RUSTDESK_RS_PUB_KEY: ${{ env.RUSTDESK_RS_PUB_KEY }}
+          FLOWLINE_API_SERVER: ${{ env.FLOWLINE_API_SERVER }}
         run: |
           if [ "${{ matrix.job.target }}" = "aarch64-apple-darwin" ]; then
             MIN_MACOS_VERSION="12.3"
