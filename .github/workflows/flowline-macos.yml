@@ -12,6 +12,10 @@ env:
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   VERSION: "1.4.9"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  # FlowLINE white-label : serveurs de rendez-vous (séparés par virgule) + clé
+  # publique. Déployer vers une autre infra = surcharger ces 2 vars. Défaut falcon.
+  RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
+  RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
 
 jobs:
   generate-bridge:
@@ -116,6 +120,9 @@ jobs:
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.target }}-rel-out.log" || true
 
       - name: Build FlowLINE
+        env:
+          RUSTDESK_RENDEZVOUS_SERVERS: ${{ env.RUSTDESK_RENDEZVOUS_SERVERS }}
+          RUSTDESK_RS_PUB_KEY: ${{ env.RUSTDESK_RS_PUB_KEY }}
         run: |
           if [ "${{ matrix.job.target }}" = "aarch64-apple-darwin" ]; then
             MIN_MACOS_VERSION="12.3"

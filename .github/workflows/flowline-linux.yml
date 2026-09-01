@@ -12,6 +12,11 @@ env:
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   VERSION: "1.4.9"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  # FlowLINE white-label : serveurs de rendez-vous (séparés par virgule) + clé
+  # publique. Déployer vers une autre infra = surcharger ces 2 vars (dispatch
+  # manuel, champ "env" du job). Valeurs par défaut = infra falcon.
+  RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
+  RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
 
 jobs:
   generate-bridge:
@@ -139,6 +144,8 @@ jobs:
       - name: Build FlowLINE (rustdesk)
         env:
           FLOWLINE_QUICK_SUPPORT: ${{ matrix.quick_support }}
+          RUSTDESK_RENDEZVOUS_SERVERS: ${{ env.RUSTDESK_RENDEZVOUS_SERVERS }}
+          RUSTDESK_RS_PUB_KEY: ${{ env.RUSTDESK_RS_PUB_KEY }}
         run: |
           ./build.py --flutter --hwcodec --unix-file-copy-paste
           # build.py produit flowline-1.4.9.deb (renommé flowline-support-1.4.9.deb
