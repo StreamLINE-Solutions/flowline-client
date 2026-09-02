@@ -162,6 +162,8 @@ jobs:
         run: |
           ./build.py --flutter --hwcodec --unix-file-copy-paste
           test -f "flowline-${{ env.VERSION }}.deb"
+          # Renommé tout de suite : le build support réécrit flowline-1.4.9.deb.
+          mv "flowline-${{ env.VERSION }}.deb" flowline-technicien.deb
 
       - name: Build FlowLINE Support (QuickSupport)
         env:
@@ -172,18 +174,18 @@ jobs:
         run: |
           ./build.py --flutter --hwcodec --unix-file-copy-paste
           # build.py produit flowline-1.4.9.deb → renommé pour distinguer l'artifact.
-          mv "flowline-${{ env.VERSION }}.deb" "flowline-support-${{ env.VERSION }}.deb"
+          mv "flowline-${{ env.VERSION }}.deb" flowline-support.deb
 
       - name: Upload FlowLINE artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: flowline-unsigned-linux-x64-${{ env.VERSION }}
-          path: flowline-${{ env.VERSION }}.deb
+          path: flowline-technicien.deb
           retention-days: 30
 
       - name: Upload FlowLINE Support artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: flowline-support-unsigned-linux-x64-${{ env.VERSION }}
-          path: flowline-support-${{ env.VERSION }}.deb
+          path: flowline-support.deb
           retention-days: 30
