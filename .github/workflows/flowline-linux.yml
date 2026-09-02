@@ -18,6 +18,8 @@ env:
   RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
   RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
   FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
+  # PAT org pour les clones git des dépendances privées (pubspec: rustdesk-org/*).
+  GITHUB_TOKEN: ${{ secrets.FLOWLINE_GH_TOKEN }}
 
 jobs:
   build-linux-x64:
@@ -43,6 +45,14 @@ jobs:
           # Repos privés (flowline-hbb-common...) : GITHUB_TOKEN du job ne voit
           # que le repo courant → PAT org (secret FLOWLINE_GH_TOKEN) pour les submodules.
           token: ${{ secrets.FLOWLINE_GH_TOKEN }}
+
+      - name: Configure git credentials (deps git privées, pubspec rustdesk-org/*)
+        # Sur GH hosted un credential helper global existe ; pas sur self-hosted.
+        # GIT_CONFIG_GLOBAL = config job-only (ne touche pas au ~/.gitconfig).
+        run: |
+          GITCFG="$RUNNER_TEMP/git-global.conf"
+          git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+          echo "GIT_CONFIG_GLOBAL=$GITCFG" >> "$GITHUB_ENV"
 
       - name: Install libunwind-dev first
         # Résout un conflit apt connu sur les runners ubuntu-22.04 : installé en

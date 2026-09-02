@@ -7,10 +7,11 @@ on:
   workflow_dispatch:
 
 # Runner self-hosted (VM win11) : pas de PowerShell 7 → on force Windows
-# PowerShell 5.1 (toujours présent). GH hosted s'en accommode aussi.
-defaults:
-  run:
-    shell: powershell
+      # PowerShell 5.1 (toujours présent) + ExecutionPolicy Bypass (la VM a une
+      # politique Restricted qui bloque le chargement du script d'étape).
+      defaults:
+        run:
+          shell: powershell -ExecutionPolicy Bypass
 
 env:
   SCITER_RUST_VERSION: "1.75"
@@ -27,6 +28,8 @@ env:
   RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
   # API compte FlowLINE (TLS via NPM). Surchargeable au dispatch.
   FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
+  # PAT org pour les clones git des dépendances privées (pubspec: rustdesk-org/*).
+  GITHUB_TOKEN: ${{ secrets.FLOWLINE_GH_TOKEN }}
 
 jobs:
   build-windows-x64:
@@ -63,6 +66,15 @@ jobs:
           } else {
             throw "7-Zip introuvable — installer via winget install --id 7zip.7zip"
           }
+
+      - name: Configure git credentials (deps git privées, pubspec rustdesk-org/*)
+        # Sur GH hosted un credential helper global existe ; pas sur self-hosted.
+        # GIT_CONFIG_GLOBAL = config job-only (ne touche pas au ~/.gitconfig).
+        shell: bash
+        run: |
+          GITCFG="$RUNNER_TEMP/git-global.conf"
+          git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+          echo "GIT_CONFIG_GLOBAL=$GITCFG" >> "$GITHUB_ENV"
 
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@ebc0426251bc40c7cd31162802432c68818ab8f0 # v2.0.9
