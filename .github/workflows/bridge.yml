@@ -31,8 +31,8 @@ jobs:
         with:
           submodules: recursive
           # Repos privés (flowline-hbb-common...) : GITHUB_TOKEN du job ne voit
-          # que le repo courant → PAT org (secret GH_PAT) pour les submodules.
-          token: ${{ secrets.GH_PAT }}
+          # que le repo courant → PAT org (secret FLOWLINE_GH_TOKEN) pour les submodules.
+          token: ${{ secrets.FLOWLINE_GH_TOKEN }}
 
       - name: Install prerequisites
         run: |
