@@ -1477,7 +1477,8 @@ function checkConnectStatus() {
             app.update();
         }
         check_if_overlay();
-        checkConnectStatus();    
+checkConnectStatus();
+checkAccountSessionLoop();
     });                          
 }                                
                                  
@@ -1689,6 +1690,30 @@ function refreshCurrentUser() {
 
 function getHttpHeaders() {
     return "Authorization: Bearer " + handler.get_local_option("access_token");
+}
+
+// FlowLINE anti-partage : valide périodiquement le compte. Si le token a été
+// révoqué (login du même compte sur un autre poste, ou abonnement résilié),
+// le client se déconnecte → le statut passe sur "Connect your account to
+// offer support" (le support sortant est bloqué). Version légère : pas de
+// rechargement de l'address book ni de spinner.
+function checkAccountSession() {
+    var token = handler.get_local_option("access_token");
+    if (!token) { return; }
+    httpRequest(handler.get_api_server() + "/api/currentUser", #post, {id: my_id, uuid: handler.get_uuid()}, function(data) {
+        if (data.error && data.error == 'Invalid token') {
+            reset_token();
+        }
+    }, function(err, status) {
+        if (status == 401 || status == 400 || status == 403) {
+            reset_token();
+        }
+    }, getHttpHeaders());
+}
+
+function checkAccountSessionLoop() {
+    checkAccountSession();
+    self.timer(30s, checkAccountSessionLoop);
 }
 
 function getDeviceInfo() {
