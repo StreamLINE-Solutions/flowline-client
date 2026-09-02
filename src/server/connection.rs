@@ -77,6 +77,9 @@ lazy_static::lazy_static! {
     static ref LOGIN_FAILURES: [Arc::<Mutex<HashMap<String, (i32, i32, i32)>>>; 2] = Default::default();
     static ref SESSIONS: Arc::<Mutex<HashMap<SessionKey, Session>>> = Default::default();
     static ref ALIVE_CONNS: Arc::<Mutex<Vec<i32>>> = Default::default();
+    // Connexions entrantes (ce device est la cible) : conn_id -> my_id du contrôleur.
+    // Utilisé par le heartbeat pour attribuer une session au technicien qui a pris la main.
+    pub static ref ALIVE_PEERS: Arc::<Mutex<HashMap<i32, String>>> = Default::default();
     pub static ref AUTHED_CONNS: Arc::<Mutex<Vec<AuthedConn>>> = Default::default();
     pub static ref CONTROL_PERMISSIONS_ARRAY: Arc::<Mutex<Vec<(i32, ControlPermissions)>>> = Default::default();
     static ref WAKELOCK_SENDER: Arc::<Mutex<std::sync::mpsc::Sender<(usize, usize)>>> = Arc::new(Mutex::new(start_wakelock_thread()));
@@ -2448,6 +2451,11 @@ impl Connection {
 
     async fn handle_login_request_without_validation(&mut self, lr: &LoginRequest) {
         self.lr = lr.clone();
+        // Ce device est la cible d'une connexion entrante : retenir l'id du
+        // contrôleur (my_id) pour l'attribution des sessions côté heartbeat.
+        if !lr.my_id.is_empty() {
+            ALIVE_PEERS.lock().unwrap().insert(self.inner.id(), lr.my_id.clone());
+        }
         self.peer_argb = crate::str2color(&format!("{}{}", &lr.my_id, &lr.my_platform), 0xff);
         if let Some(o) = lr.option.as_ref() {
             self.options_in_login = Some(o.clone());
@@ -5115,6 +5123,13 @@ impl Connection {
         ALIVE_CONNS.lock().unwrap().clone()
     }
 
+    /// Pour les connexions entrantes (ce device est la cible contrôlée), renvoie
+    /// les ids des contrôleurs, dans l'ordre des connexions actives.
+    pub fn alive_peers(conns: &[i32]) -> Vec<String> {
+        let peers = ALIVE_PEERS.lock().unwrap();
+        conns.iter().filter_map(|c| peers.get(c).cloned()).collect()
+    }
+
     #[cfg(windows)]
     fn portable_check(&mut self) {
         if self.portable.is_installed || !self.is_remote() || !self.keyboard {
@@ -6457,6 +6472,7 @@ mod raii {
         fn drop(&mut self) {
             let mut active_conns_lock = ALIVE_CONNS.lock().unwrap();
             active_conns_lock.retain(|&c| c != self.0);
+            ALIVE_PEERS.lock().unwrap().remove(&self.0);
         }
     }
 

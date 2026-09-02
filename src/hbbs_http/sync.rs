@@ -238,6 +238,12 @@ async fn start_hbbs_sync_async() {
                 v["ver"] = json!(hbb_common::get_version_number(crate::VERSION));
                 if !conns.is_empty() {
                     v["conns"] = json!(conns);
+                    // Connexions entrantes (ce device est la cible contrôlée) :
+                    // ids des contrôleurs, pour l'attribution des sessions.
+                    let peers = Connection::alive_peers(&conns);
+                    if !peers.is_empty() {
+                        v["peers"] = json!(peers);
+                    }
                 }
                 let modified_at = LocalConfig::get_option("strategy_timestamp").parse::<i64>().unwrap_or(0);
                 v["modified_at"] = json!(modified_at);
