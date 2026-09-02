@@ -21,22 +21,13 @@ env:
 
 jobs:
   build-linux-x64:
-    name: ${{ matrix.name }} (x86_64-unknown-linux-gnu)
+    name: FlowLINE + Support (x86_64-unknown-linux-gnu)
     # Build self-hosted sur le laptop Lucas (runner ~/projets/actions-runner,
     # Pop!_OS 24.04). Labels = défauts du runner (matching sensible à la casse).
-    # Le bridge (flutter_rust_bridge) est commité : plus de job generate-bridge
-    # (re-générer + recommiter si src/flutter_ffi.rs ou FRB_VERSION change).
+    # Un seul job build les 2 variantes en séquence (runner self-hosted = 1 job
+    # à la fois) : le 2e build profite du cache cargo (souvent 1,3-1,5x un build
+    # simple au lieu de 2x). Le bridge (flutter_rust_bridge) est commité.
     runs-on: [self-hosted, Linux, X64]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: flowline
-            quick_support: "0"
-            artifact_name: flowline-unsigned-linux-x64
-          - name: flowline-support
-            quick_support: "1"
-            artifact_name: flowline-support-unsigned-linux-x64
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
@@ -142,23 +133,37 @@ jobs:
           fi
         shell: bash
 
-      - name: Build FlowLINE (rustdesk)
+      - name: Build FlowLINE (technicien)
         env:
-          FLOWLINE_QUICK_SUPPORT: ${{ matrix.quick_support }}
+          FLOWLINE_QUICK_SUPPORT: "0"
           RUSTDESK_RENDEZVOUS_SERVERS: ${{ env.RUSTDESK_RENDEZVOUS_SERVERS }}
           RUSTDESK_RS_PUB_KEY: ${{ env.RUSTDESK_RS_PUB_KEY }}
           FLOWLINE_API_SERVER: ${{ env.FLOWLINE_API_SERVER }}
         run: |
           ./build.py --flutter --hwcodec --unix-file-copy-paste
-          # build.py produit flowline-1.4.9.deb (renommé flowline-support-1.4.9.deb
-          # pour le variant support, pour distinguer les 2 artifacts).
-          if [ "${{ matrix.quick_support }}" = "1" ]; then
-            mv "flowline-${{ env.VERSION }}.deb" "flowline-support-${{ env.VERSION }}.deb"
-          fi
+          test -f "flowline-${{ env.VERSION }}.deb"
 
-      - name: Upload unsigned artifact
+      - name: Build FlowLINE Support (QuickSupport)
+        env:
+          FLOWLINE_QUICK_SUPPORT: "1"
+          RUSTDESK_RENDEZVOUS_SERVERS: ${{ env.RUSTDESK_RENDEZVOUS_SERVERS }}
+          RUSTDESK_RS_PUB_KEY: ${{ env.RUSTDESK_RS_PUB_KEY }}
+          FLOWLINE_API_SERVER: ${{ env.FLOWLINE_API_SERVER }}
+        run: |
+          ./build.py --flutter --hwcodec --unix-file-copy-paste
+          # build.py produit flowline-1.4.9.deb → renommé pour distinguer l'artifact.
+          mv "flowline-${{ env.VERSION }}.deb" "flowline-support-${{ env.VERSION }}.deb"
+
+      - name: Upload FlowLINE artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ matrix.artifact_name }}-${{ env.VERSION }}
-          path: flowline*-${{ env.VERSION }}.deb
+          name: flowline-unsigned-linux-x64-${{ env.VERSION }}
+          path: flowline-${{ env.VERSION }}.deb
+          retention-days: 30
+
+      - name: Upload FlowLINE Support artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flowline-support-unsigned-linux-x64-${{ env.VERSION }}
+          path: flowline-support-${{ env.VERSION }}.deb
           retention-days: 30

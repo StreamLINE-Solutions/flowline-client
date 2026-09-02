@@ -24,21 +24,12 @@ env:
 
 jobs:
   build-windows-x64:
-    name: ${{ matrix.name }} (x86_64-pc-windows-msvc)
+    name: FlowLINE + Support (x86_64-pc-windows-msvc)
     # Build self-hosted sur la VM win11 (runner C:\actions-runner). Prérequis :
-    # VS Build Tools (workload VCTools + Windows SDK). Le bridge (flutter_rust_bridge)
-    # est commité : plus de job generate-bridge.
+    # VS Build Tools (workload VCTools + Windows SDK). Un seul job build les 2
+    # variantes en séquence (runner self-hosted = 1 job à la fois), le 2e build
+    # profite du cache. Le bridge (flutter_rust_bridge) est commité.
     runs-on: [self-hosted, Windows, X64]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: flowline
-            quick_support: "0"
-            artifact_name: flowline-unsigned-windows-x64
-          - name: flowline-support
-            quick_support: "1"
-            artifact_name: flowline-support-unsigned-windows-x64
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
@@ -59,6 +50,17 @@ jobs:
         uses: KyleMayes/install-llvm-action@ebc0426251bc40c7cd31162802432c68818ab8f0 # v2.0.9
         with:
           version: ${{ env.LLVM_VERSION }}
+
+      # Toolchain CMake + Ninja (GH hosted les préinstalle, self-hosted non) :
+      # installés dans le tool cache, sans admin.
+      - name: Install CMake and Ninja
+        uses: lukka/get-cmake@4a7d025fc60f00db0c7b44ebf783d19b52444830 # v4.4.1
+
+      # Python réel (GH hosted préinstallé, self-hosted non) — build.py stdlib only.
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
 
       - name: Install flutter
         id: flutter
@@ -125,22 +127,42 @@ jobs:
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-x64-windows-static-rel-out.log" || true
         shell: bash
 
-      - name: Build FlowLINE (rustdesk)
+      # MSVC (cl/link) : GH hosted a l'env dans le PATH, le self-hosted non →
+      # active VS Build Tools (vswhere) pour ce job.
+      - name: Set up MSVC environment
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+
+      - name: Build FlowLINE (technicien)
         env:
-          FLOWLINE_QUICK_SUPPORT: ${{ matrix.quick_support }}
+          FLOWLINE_QUICK_SUPPORT: "0"
           RUSTDESK_RENDEZVOUS_SERVERS: ${{ env.RUSTDESK_RENDEZVOUS_SERVERS }}
           RUSTDESK_RS_PUB_KEY: ${{ env.RUSTDESK_RS_PUB_KEY }}
           FLOWLINE_API_SERVER: ${{ env.FLOWLINE_API_SERVER }}
         run: |
-          python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
+          python .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
-          if ("${{ matrix.quick_support }}" -eq "1") {
-            mv ./rustdesk/flowline.exe ./rustdesk/flowline-support.exe
-          }
 
-      - name: Upload unsigned artifact
+      - name: Build FlowLINE Support (QuickSupport)
+        env:
+          FLOWLINE_QUICK_SUPPORT: "1"
+          RUSTDESK_RENDEZVOUS_SERVERS: ${{ env.RUSTDESK_RENDEZVOUS_SERVERS }}
+          RUSTDESK_RS_PUB_KEY: ${{ env.RUSTDESK_RS_PUB_KEY }}
+          FLOWLINE_API_SERVER: ${{ env.FLOWLINE_API_SERVER }}
+        run: |
+          python .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
+          mv ./flutter/build/windows/x64/runner/Release ./rustdesk-support
+          mv ./rustdesk-support/flowline.exe ./rustdesk-support/flowline-support.exe
+
+      - name: Upload FlowLINE artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ matrix.artifact_name }}-${{ env.VERSION }}
+          name: flowline-unsigned-windows-x64-${{ env.VERSION }}
           path: rustdesk
+          retention-days: 30
+
+      - name: Upload FlowLINE Support artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flowline-support-unsigned-windows-x64-${{ env.VERSION }}
+          path: rustdesk-support
           retention-days: 30
