@@ -30,7 +30,9 @@ jobs:
   build-windows-x64:
     name: ${{ matrix.name }} (x86_64-pc-windows-msvc)
     needs: [generate-bridge]
-    runs-on: windows-2022
+    # Build self-hosted sur la VM win11 (runner C:\actions-runner). Prérequis :
+    # VS Build Tools (workload VCTools + Windows SDK). Le bridge reste sur GitHub.
+    runs-on: [self-hosted, Windows, X64]
     strategy:
       fail-fast: false
       matrix:
@@ -77,13 +79,16 @@ jobs:
           architecture: x64
 
       - name: Replace engine with rustdesk custom flutter engine
-        # https://github.com/flutter/flutter/issues/155685
+        # Chemin du SDK Flutter via RUNNER_TOOL_CACHE (hostedtoolcache sur GH
+        # hosted, _work/_tool sur self-hosted) — plus de chemin hardcodé.
         run: |
           flutter doctor -v
           flutter precache --windows
-          Invoke-WebRequest -Uri https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip -OutFile windows-x64-release.zip
+          Invoke-WebRequest -UseBasicParsing -Uri https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip -OutFile windows-x64-release.zip
           Expand-Archive -Path windows-x64-release.zip -DestinationPath windows-x64-release
-          mv -Force windows-x64-release/*  C:/hostedtoolcache/windows/flutter/stable-${{ env.FLUTTER_VERSION }}-x64/bin/cache/artifacts/engine/windows-x64-release/
+          $engineDir = "$env:RUNNER_TOOL_CACHE\flutter\stable-${{ env.FLUTTER_VERSION }}-x64\bin\cache\artifacts\engine\windows-x64-release"
+          New-Item -ItemType Directory -Force -Path $engineDir | Out-Null
+          Copy-Item -Force -Recurse -Path "windows-x64-release\*" -Destination $engineDir
 
       - name: Patch flutter
         shell: bash
