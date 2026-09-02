@@ -89,6 +89,11 @@ class ConnectStatus: Reactor.Component {
         if (!incoming_only && !account_logged) {
             return <span #account-login-required class="connect-status-account link">{translate("Connect your account to offer support")}</span>;
         }
+        // FlowLINE : un responsable est un utilisateur console, le support sortant
+        // ne lui est pas disponible.
+        if (!incoming_only && isManagerLogged()) {
+            return <span class="connect-status-account">{translate("Manager account — use the web portal")}</span>;
+        }
         if (!handler.using_public_server()) return translate('Ready');
         return <span>{translate("Ready")}, <span .link #setup-server>{translate("setup_server_tip")}</span></span>;
     }
@@ -1530,7 +1535,17 @@ function set_local_user_info(user) {
     if (user.status) {
         user_info.status = user.status;
     }
+    if (user.is_manager) {
+        user_info.is_manager = user.is_manager;
+    }
     handler.set_local_option("user_info", JSON.stringify(user_info));
+}
+
+// FlowLINE : un responsable (manager) est un utilisateur console, pas un tech.
+// Le login client lui est interdit côté serveur ; ce flag couvre aussi le cas
+// d'un token de portail réinjecté manuellement (défense en profondeur).
+function isManagerLogged() {
+    try { return !!JSON.parse(handler.get_local_option("user_info")).is_manager; } catch(e) { return false; }
 }
 
 function login() {
