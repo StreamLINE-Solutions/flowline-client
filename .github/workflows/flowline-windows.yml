@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
 
 # Runner self-hosted (VM win11) : pas de PowerShell 7 → on force Windows
-      # PowerShell 5.1 (toujours présent) + ExecutionPolicy Bypass (la VM a une
-      # politique Restricted qui bloque le chargement du script d'étape).
-      defaults:
-        run:
-          shell: powershell -ExecutionPolicy Bypass
+# PowerShell 5.1 (toujours présent) + ExecutionPolicy Bypass (la VM a une
+# politique Restricted qui bloque le chargement du script d'étape).
+defaults:
+  run:
+    shell: powershell -ExecutionPolicy Bypass
 
 env:
   SCITER_RUST_VERSION: "1.75"
