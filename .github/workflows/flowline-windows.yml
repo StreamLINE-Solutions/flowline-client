@@ -46,6 +46,19 @@ jobs:
           # que le repo courant → PAT org (secret FLOWLINE_GH_TOKEN) pour les submodules.
           token: ${{ secrets.FLOWLINE_GH_TOKEN }}
 
+      # 7-Zip requis par install-llvm-action pour extraire LLVM. Préinstallé sur
+      # GH hosted ; sur self-hosted l'installeur n'ajoute pas forcément le PATH.
+      - name: Add 7-Zip to PATH
+        shell: pwsh
+        run: |
+          if (Test-Path "C:\Program Files\7-Zip") {
+            Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\7-Zip"
+          } elseif (Test-Path "C:\Program Files (x86)\7-Zip") {
+            Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\7-Zip"
+          } else {
+            throw "7-Zip introuvable — installer via winget install --id 7zip.7zip"
+          }
+
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@ebc0426251bc40c7cd31162802432c68818ab8f0 # v2.0.9
         with:
