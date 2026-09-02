@@ -29,7 +29,8 @@ jobs:
     needs: [generate-bridge]
     # Build self-hosted sur le laptop Lucas (runner ~/projets/actions-runner,
     # Pop!_OS 24.04). Le bridge reste sur GitHub (partagé win/linux/mac).
-    runs-on: [self-hosted, linux, x64]
+    # Labels = défauts du runner (matching sensible à la casse).
+    runs-on: [self-hosted, Linux, X64]
     strategy:
       fail-fast: false
       matrix:
