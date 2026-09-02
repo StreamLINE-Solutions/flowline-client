@@ -11,7 +11,7 @@ on:
 # politique Restricted qui bloque le chargement du script d'étape).
 defaults:
   run:
-    shell: powershell -ExecutionPolicy Bypass
+    shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
 
 env:
   SCITER_RUST_VERSION: "1.75"
