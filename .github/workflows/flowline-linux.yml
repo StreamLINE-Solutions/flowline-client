@@ -70,6 +70,11 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends libunwind-dev
 
       - name: Install apt dependencies
+        # NOTE: pas de libappindicator3-dev — il conflictue avec
+        # libayatana-appindicator3-1 (embarqué dans le desktop Pop!_OS 24.04).
+        # libappindicator-sys 0.9.0 charge la lib à runtime (libloading), pas au
+        # link : le -dev n'est pas requis, et libappindicator3.so.1 est fourni
+        # par le shim ayatana déjà présent.
         run: |
           sudo apt-get update -y
           sudo apt-get install -y \
@@ -79,7 +84,6 @@ jobs:
             gcc \
             git \
             g++ \
-            libappindicator3-dev \
             libasound2-dev \
             libclang-dev \
             libgstreamer1.0-dev \
