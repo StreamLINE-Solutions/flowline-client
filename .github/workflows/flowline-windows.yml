@@ -193,6 +193,10 @@ jobs:
           RUSTDESK_RS_PUB_KEY: ${{ env.RUSTDESK_RS_PUB_KEY }}
           FLOWLINE_API_SERVER: ${{ env.FLOWLINE_API_SERVER }}
         run: |
+          # msvc-dev-cmd a réécrit VCPKG_ROOT vers le vcpkg embarqué de VS Build
+          # Tools (ffmpeg absent) → on le re-pointe vers notre vcpkg (tool cache).
+          $env:VCPKG_ROOT = "$env:RUNNER_TOOL_CACHE\vcpkg"
+          $env:VCPKG_INSTALLED_ROOT = "$env:RUNNER_TOOL_CACHE\vcpkg\installed"
           python .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
@@ -203,6 +207,8 @@ jobs:
           RUSTDESK_RS_PUB_KEY: ${{ env.RUSTDESK_RS_PUB_KEY }}
           FLOWLINE_API_SERVER: ${{ env.FLOWLINE_API_SERVER }}
         run: |
+          $env:VCPKG_ROOT = "$env:RUNNER_TOOL_CACHE\vcpkg"
+          $env:VCPKG_INSTALLED_ROOT = "$env:RUNNER_TOOL_CACHE\vcpkg\installed"
           python .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk-support
           mv ./rustdesk-support/flowline.exe ./rustdesk-support/flowline-support.exe
