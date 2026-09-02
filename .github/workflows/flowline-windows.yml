@@ -57,7 +57,10 @@ jobs:
 
       # 7-Zip requis par install-llvm-action pour extraire LLVM. Préinstallé sur
       # GH hosted ; sur self-hosted l'installeur n'ajoute pas forcément le PATH.
-      - name: Add 7-Zip to PATH
+      - name: Add 7-Zip and Git bash to PATH
+        # 7-Zip requis par install-llvm-action ; Git\bin requis par les steps
+        # shell:bash (bash.exe). Préinstallés sur GH hosted ; sur self-hosted
+        # les installeurs winget n'ajoutent pas forcément ces dossiers au PATH.
         run: |
           if (Test-Path "C:\Program Files\7-Zip") {
             Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\7-Zip"
@@ -65,6 +68,11 @@ jobs:
             Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\7-Zip"
           } else {
             throw "7-Zip not found - install via winget install --id 7zip.7zip"
+          }
+          if (Test-Path "C:\Program Files\Git\bin") {
+            Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\Git\bin"
+          } else {
+            throw "Git bin not found - install via winget install --id Git.Git"
           }
 
       - name: Configure git credentials (deps git privées, pubspec rustdesk-org/*)
