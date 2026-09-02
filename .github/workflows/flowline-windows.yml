@@ -6,6 +6,12 @@ on:
   # GitHub Actions → "Run workflow" → branche main quand un build est voulu.
   workflow_dispatch:
 
+# Runner self-hosted (VM win11) : pas de PowerShell 7 → on force Windows
+# PowerShell 5.1 (toujours présent). GH hosted s'en accommode aussi.
+defaults:
+  run:
+    shell: powershell
+
 env:
   SCITER_RUST_VERSION: "1.75"
   RUST_VERSION: "1.75"
@@ -49,7 +55,6 @@ jobs:
       # 7-Zip requis par install-llvm-action pour extraire LLVM. Préinstallé sur
       # GH hosted ; sur self-hosted l'installeur n'ajoute pas forcément le PATH.
       - name: Add 7-Zip to PATH
-        shell: pwsh
         run: |
           if (Test-Path "C:\Program Files\7-Zip") {
             Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files\7-Zip"
