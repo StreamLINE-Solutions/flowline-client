@@ -100,6 +100,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      # jq requis par subosito/flutter-action (setup.sh). Préinstallé sur GH hosted.
+      - name: Install jq
+        run: |
+          $jqDir = Join-Path $env:RUNNER_TEMP "jq"
+          New-Item -ItemType Directory -Force -Path $jqDir | Out-Null
+          Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-windows-amd64.exe" -OutFile (Join-Path $jqDir "jq.exe")
+          Add-Content -Path $env:GITHUB_PATH -Value $jqDir
+
       - name: Install flutter
         id: flutter
         uses: subosito/flutter-action@2783a3f08e1baf891508463f8c6653c258246225  # v2.12.0
