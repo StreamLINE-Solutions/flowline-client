@@ -64,7 +64,7 @@ jobs:
           } elseif (Test-Path "C:\Program Files (x86)\7-Zip") {
             Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\7-Zip"
           } else {
-            throw "7-Zip introuvable — installer via winget install --id 7zip.7zip"
+            throw "7-Zip not found - install via winget install --id 7zip.7zip"
           }
 
       - name: Configure git credentials (deps git privées, pubspec rustdesk-org/*)

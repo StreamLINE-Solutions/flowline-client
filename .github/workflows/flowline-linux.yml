@@ -83,6 +83,7 @@ jobs:
             libpam0g-dev \
             libpulse-dev \
             libssl-dev \
+            libstdc++-14-dev \
             libva-dev \
             libvdpau-dev \
             libxcb-randr0-dev \
