@@ -27,7 +27,9 @@ jobs:
   build-linux-x64:
     name: ${{ matrix.name }} (x86_64-unknown-linux-gnu)
     needs: [generate-bridge]
-    runs-on: ubuntu-22.04
+    # Build self-hosted sur le laptop Lucas (runner ~/projets/actions-runner,
+    # Pop!_OS 24.04). Le bridge reste sur GitHub (partagé win/linux/mac).
+    runs-on: [self-hosted, linux, x64]
     strategy:
       fail-fast: false
       matrix:
