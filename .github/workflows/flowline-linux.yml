@@ -99,7 +99,15 @@ jobs:
         run: |
           cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff $(dirname $(dirname $(which flutter)))
           cd $(dirname $(dirname $(which flutter)))
-          [[ "3.24.5" == ${{env.FLUTTER_VERSION}} ]] && git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+          # Idempotent : sur self-hosted le SDK Flutter est persisté dans le tool
+          # cache entre les runs → le patch peut déjà être appliqué.
+          if [[ "3.24.5" == "${{env.FLUTTER_VERSION}}" ]]; then
+            if git apply --reverse --check flutter_3.24.4_dropdown_menu_enableFilter.diff 2>/dev/null; then
+              echo "Patch déjà appliqué — skip"
+            else
+              git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+            fi
+          fi
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
