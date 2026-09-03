@@ -49,6 +49,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   var watchIsInputMonitoring = false;
   var watchIsCanRecordAudio = false;
   Timer? _updateTimer;
+  Timer? _accountTimer;
   bool isCardClosed = false;
 
   final RxBool _editHover = false.obs;
@@ -748,6 +749,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     });
     Get.put<RxBool>(svcStopped, tag: 'stop-service');
     rustDeskWinManager.registerActiveWindowListener(onActiveWindowChanged);
+    // FlowLINE : contrôle périodique du compte (anti-partage 1 poste = 1 session).
+    // Le serveur révoque le token au login sur un autre poste ; on vérifie ici
+    // toutes les 30 s et on se déconnecte localement si le token est invalide.
+    _accountTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      gFFI.userModel.refreshCurrentUser();
+    });
 
     screenToMap(window_size.Screen screen) => {
           'frame': {
@@ -879,6 +886,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     _uniLinksSubscription?.cancel();
     Get.delete<RxBool>(tag: 'stop-service');
     _updateTimer?.cancel();
+    _accountTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
