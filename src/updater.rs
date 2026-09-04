@@ -119,7 +119,9 @@ fn start_auto_update_check_(rx_msg: Receiver<UpdateMsg>) {
 
 fn check_update(manually: bool) -> ResultType<()> {
     #[cfg(target_os = "windows")]
-    let update_msi = crate::platform::is_msi_installed()? && !crate::is_custom_client();
+    // FlowLINE : on distribue un MSI, y compris pour le client custom (le check
+    // upstream force `exe` pour les custom clients, ce qui n'est pas notre cas).
+    let update_msi = crate::platform::is_msi_installed()?;
     if !(manually || config::Config::get_bool_option(config::keys::OPTION_ALLOW_AUTO_UPDATE)) {
         return Ok(());
     }
@@ -143,8 +145,9 @@ fn check_update(manually: bool) -> ResultType<()> {
                 );
             };
             format!(
-                "{}/rustdesk-{}-{}.{}",
+                "{}/{}-{}-{}.{}",
                 download_url,
+                crate::get_app_name().to_lowercase(),
                 version,
                 arch,
                 if update_msi { "msi" } else { "exe" }
