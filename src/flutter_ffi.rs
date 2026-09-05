@@ -2860,16 +2860,20 @@ pub fn main_get_common(key: String) -> String {
                 crate::platform::windows::is_msi_installed(),
                 crate::common::is_custom_client(),
             ) {
-                (Ok(true), false) => match crate::platform::windows::release_arch_suffix() {
-                    Some(arch) => format!("rustdesk-{_version}-{arch}.msi"),
+                // FlowLINE : la nomenclature est flowline-{version}-{arch}.{ext},
+                // et le custom client (comme le standard) reçoit un MSI.
+                (Ok(true), _) => match crate::platform::windows::release_arch_suffix() {
+                    Some(arch) => {
+                        format!("{}-{_version}-{arch}.msi", crate::get_app_name().to_lowercase())
+                    }
                     None => "error:unsupported".to_owned(),
                 },
-                (Ok(true), true) | (Ok(false), _) => {
-                    match crate::platform::windows::release_arch_suffix() {
-                        Some(arch) => format!("rustdesk-{_version}-{arch}.exe"),
-                        None => "error:unsupported".to_owned(),
+                (Ok(false), _) => match crate::platform::windows::release_arch_suffix() {
+                    Some(arch) => {
+                        format!("{}-{_version}-{arch}.exe", crate::get_app_name().to_lowercase())
                     }
-                }
+                    None => "error:unsupported".to_owned(),
+                },
                 (Err(e), _) => {
                     log::error!("Failed to check if is msi: {}", e);
                     format!("error:update-failed-check-msi-tip")
