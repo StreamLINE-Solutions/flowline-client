@@ -449,7 +449,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           btnText,
           onPressed,
           closeButton: true,
-          help: isToUpdate ? 'Changelog' : null,
+          help: null,
           link: null);
     }
     if (systemError.isNotEmpty) {
