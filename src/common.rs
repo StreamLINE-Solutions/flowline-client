@@ -1103,6 +1103,9 @@ pub fn is_public(url: &str) -> bool {
 }
 
 pub fn get_udp_punch_enabled() -> bool {
+    if config::FORCE_RELAY {
+        return false;
+    }
     config::option2bool(
         keys::OPTION_ENABLE_UDP_PUNCH,
         &get_local_option(keys::OPTION_ENABLE_UDP_PUNCH),
