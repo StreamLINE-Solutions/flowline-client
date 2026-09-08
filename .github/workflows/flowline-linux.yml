@@ -10,7 +10,7 @@ env:
   RUST_VERSION: "1.75"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
-  VERSION: "1.4.9"
+  VERSION: "1.4.12"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   # FlowLINE white-label : serveurs de rendez-vous (séparés par virgule) + clé
   # publique. Déployer vers une autre infra = surcharger ces 2 vars (dispatch
@@ -162,7 +162,7 @@ jobs:
         run: |
           ./build.py --flutter --hwcodec --unix-file-copy-paste
           test -f "flowline-${{ env.VERSION }}.deb"
-          # Renommé tout de suite : le build support réécrit flowline-1.4.9.deb.
+          # Renommé tout de suite : le build support réécrit flowline-<version>.deb.
           mv "flowline-${{ env.VERSION }}.deb" flowline-technicien.deb
 
       - name: Build FlowLINE Support (QuickSupport)
@@ -173,7 +173,7 @@ jobs:
           FLOWLINE_API_SERVER: ${{ env.FLOWLINE_API_SERVER }}
         run: |
           ./build.py --flutter --hwcodec --unix-file-copy-paste
-          # build.py produit flowline-1.4.9.deb → renommé pour distinguer l'artifact.
+          # build.py produit flowline-<version>.deb → renommé pour distinguer l'artifact.
           mv "flowline-${{ env.VERSION }}.deb" flowline-support.deb
 
       - name: Upload FlowLINE artifact

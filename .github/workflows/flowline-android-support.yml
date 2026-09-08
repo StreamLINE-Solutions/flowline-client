@@ -1,0 +1,144 @@
+name: Build FlowLINE Android (Support)
+
+on:
+  # Build déclenché MANUELLEMENT (workflow_dispatch). Build self-hosted sur le
+  # laptop Lucas (runner ~/projets/actions-runner, Pop!_OS 24.04 — même runner
+  # que Linux). Prérequis runner : Android SDK + NDK r25c+ + targets rust android
+  # + cargo-ndk, installés par le playbook flowline-runner-android-setup.yml
+  # (variables ANDROID_HOME / ANDROID_NDK_HOME via le .env du runner).
+  workflow_dispatch:
+
+env:
+  RUST_VERSION: "1.75"
+  FLUTTER_VERSION: "3.24.5"
+  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+  VERSION: "1.4.12"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  # FlowLINE white-label : serveurs de rendez-vous (séparés par virgule) + clé
+  # publique. Déployer vers une autre infra = surcharger ces 2 vars (dispatch
+  # manuel, champ "env" du job). Valeurs par défaut = infra falcon.
+  RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
+  RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
+  FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
+  # PAT org pour les clones git des dépendances privées (pubspec: rustdesk-org/*).
+  GITHUB_TOKEN: ${{ secrets.FLOWLINE_GH_TOKEN }}
+
+jobs:
+  build-android-support:
+    name: FlowLINE Support (arm64 + armeabi-v7a)
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          submodules: recursive
+          # Repos privés (flowline-hbb-common...) : GITHUB_TOKEN du job ne voit
+          # que le repo courant → PAT org (secret FLOWLINE_GH_TOKEN) pour les submodules.
+          token: ${{ secrets.FLOWLINE_GH_TOKEN }}
+
+      - name: Configure git credentials (deps git privées, pubspec rustdesk-org/*)
+        # flutter pub get clone les deps git privées dans le cache pub (~/.pub-cache)
+        # : le credential du checkout ne s'applique pas à ces clones → helper global.
+        # GIT_CONFIG_GLOBAL = config job-only (ne touche pas au ~/.gitconfig).
+        shell: bash
+        run: |
+          GITCFG="$RUNNER_TEMP/git-global.conf"
+          git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+          echo "GIT_CONFIG_GLOBAL=$GITCFG" >> "$GITHUB_ENV"
+
+      - name: Guard - Android SDK/NDK + cargo-ndk préinstallés (playbook runner)
+        shell: bash
+        run: |
+          : "${ANDROID_HOME:?ANDROID_HOME absent — lancer le playbook flowline-runner-android-setup.yml}"
+          : "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME absent — lancer le playbook flowline-runner-android-setup.yml}"
+          command -v sdkmanager >/dev/null || { echo "sdkmanager absent — lancer le playbook runner"; exit 1; }
+          command -v cargo-ndk >/dev/null || { echo "cargo-ndk absent — lancer le playbook runner"; exit 1; }
+          echo "SDK: $ANDROID_HOME"
+          echo "NDK: $ANDROID_NDK_HOME"
+          cargo ndk --version
+          $ANDROID_NDK_HOME/ndk-version
+
+      - name: Install flutter
+        uses: subosito/flutter-action@2783a3f08e1baf891508463f8c6653c258246225 # v2.12.0
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          architecture: x64
+
+      - name: Patch flutter
+        shell: bash
+        run: |
+          cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff $(dirname $(dirname $(which flutter)))
+          cd $(dirname $(dirname $(which flutter)))
+          # Idempotent : sur self-hosted le SDK Flutter est persisté dans le tool
+          # cache entre les runs → le patch peut déjà être appliqué.
+          if [[ "3.24.5" == "${{env.FLUTTER_VERSION}}" ]]; then
+            if git apply --reverse --check flutter_3.24.4_dropdown_menu_enableFilter.diff 2>/dev/null; then
+              echo "Patch déjà appliqué — skip"
+            else
+              git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+            fi
+          fi
+
+      - name: Install Rust toolchain (android targets)
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-linux-android,armv7-linux-androideabi
+          components: "rustfmt"
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          prefix-key: linux-x64
+
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11
+        with:
+          vcpkgDirectory: ${{ runner.tool_cache }}/vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg android dependencies
+        shell: bash
+        run: |
+          ./flutter/build_android_deps.sh arm64-v8a
+          ./flutter/build_android_deps.sh armeabi-v7a
+
+      - name: "Build rust .so (Support: feature quick-support)"
+        # La variante Support force l'UI réduite incoming-only (feature cargo
+        # `quick-support`, cross-platform). Les .so sont copiés dans jniLibs.
+        shell: bash
+        run: |
+          cargo ndk --platform 21 -t arm64-v8a -t armeabi-v7a \
+            -o android/app/src/main/jniLibs \
+            build --locked --release --features flutter,hwcodec,quick-support
+          ls -la android/app/src/main/jniLibs/arm64-v8a/ android/app/src/main/jniLibs/armeabi-v7a/
+
+      - name: Strip native libs (taille APK)
+        shell: bash
+        run: |
+          $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip \
+            android/app/src/main/jniLibs/arm64-v8a/*.so
+          $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip \
+            android/app/src/main/jniLibs/armeabi-v7a/*.so
+
+      - name: Build FlowLINE Support APK
+        shell: bash
+        run: |
+          flutter precache --android
+          flutter build apk --release --target-platform android-arm64,android-arm
+          cp build/app/outputs/flutter-apk/app-release.apk flowline-support-${{ env.VERSION }}.apk
+
+      - name: Upload FlowLINE Support APK
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flowline-support-unsigned-android-${{ env.VERSION }}
+          path: flowline-support-${{ env.VERSION }}.apk
+          retention-days: 30
