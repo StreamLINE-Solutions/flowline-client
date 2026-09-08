@@ -147,7 +147,7 @@ jobs:
           CREATE_DMG="$(command -v create-dmg)"
           CREATE_DMG="$(readlink -f "$CREATE_DMG")"
           sed -i -e 's/MAXIMUM_UNMOUNTING_ATTEMPTS=3/MAXIMUM_UNMOUNTING_ATTEMPTS=7/' "$CREATE_DMG"
-          create-dmg --icon "RustDesk.app" 200 190 --hide-extension "RustDesk.app" --window-size 800 400 --app-drop-link 600 185 "flowline-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg" ./flutter/build/macos/Build/Products/Release/RustDesk.app
+          create-dmg --icon "FlowLINE.app" 200 190 --hide-extension "FlowLINE.app" --window-size 800 400 --app-drop-link 600 185 "flowline-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg" ./flutter/build/macos/Build/Products/Release/FlowLINE.app
 
       - name: Build FlowLINE Support (QuickSupport)
         # Variante Support : feature cargo `quick-support` (incoming-only, UI réduite) —
@@ -166,7 +166,7 @@ jobs:
           CREATE_DMG="$(command -v create-dmg)"
           CREATE_DMG="$(readlink -f "$CREATE_DMG")"
           sed -i -e 's/MAXIMUM_UNMOUNTING_ATTEMPTS=3/MAXIMUM_UNMOUNTING_ATTEMPTS=7/' "$CREATE_DMG"
-          create-dmg --icon "RustDesk.app" 200 190 --hide-extension "RustDesk.app" --window-size 800 400 --app-drop-link 600 185 "flowline-support-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg" ./flutter/build/macos/Build/Products/Release/RustDesk.app
+          create-dmg --icon "FlowLINE.app" 200 190 --hide-extension "FlowLINE.app" --window-size 800 400 --app-drop-link 600 185 "flowline-support-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg" ./flutter/build/macos/Build/Products/Release/FlowLINE.app
 
       - name: Upload unsigned macOS app
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

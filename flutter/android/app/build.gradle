@@ -97,7 +97,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "com.carriez.flutter_hbb"
+        applicationId "com.streamline.flowline"
         minSdkVersion 22
         targetSdkVersion 33
         versionCode flutterVersionCode.toInteger()
@@ -125,6 +125,29 @@ android {
 
 flutter {
     source '../..'
+}
+
+// Embarquer libc++_shared.so (runtime C++ du NDK) : requis par librustdesk.so
+// (lié au runtime partagé). Le NDK ne l'inclut pas automatiquement dans l'APK.
+// Host = linux-x86_64 (runner self-hosted du build Android). ANDROID_NDK_HOME
+// est défini dans le .env du runner (playbook flowline-runner-android-setup).
+def ndkHome = System.getenv('ANDROID_NDK_HOME')
+if (ndkHome == null || ndkHome.isEmpty()) {
+    throw new GradleException('ANDROID_NDK_HOME non défini (playbook flowline-runner-android-setup.yml)')
+}
+def ndkCxxLib = "${ndkHome}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib"
+def cxxSharedLibs = [
+    "arm64-v8a"   : "${ndkCxxLib}/aarch64-linux-android/libc++_shared.so",
+    "armeabi-v7a" : "${ndkCxxLib}/arm-linux-androideabi/libc++_shared.so",
+]
+android.applicationVariants.all { variant ->
+    def copyCxx = tasks.register("copyLibCxx${variant.name.capitalize()}", Copy) {
+        cxxSharedLibs.each { abi, src ->
+            from(src) { into abi }
+        }
+        into "src/main/jniLibs"
+    }
+    variant.preBuildProvider.configure { dependsOn(copyCxx) }
 }
 
 dependencies {
