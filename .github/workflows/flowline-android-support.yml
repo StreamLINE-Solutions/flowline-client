@@ -58,12 +58,12 @@ jobs:
         run: |
           : "${ANDROID_HOME:?ANDROID_HOME absent — lancer le playbook flowline-runner-android-setup.yml}"
           : "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME absent — lancer le playbook flowline-runner-android-setup.yml}"
-          command -v sdkmanager >/dev/null || { echo "sdkmanager absent — lancer le playbook runner"; exit 1; }
           command -v cargo-ndk >/dev/null || { echo "cargo-ndk absent — lancer le playbook runner"; exit 1; }
           echo "SDK: $ANDROID_HOME"
           echo "NDK: $ANDROID_NDK_HOME"
           cargo ndk --version
-          $ANDROID_NDK_HOME/ndk-version
+          # NDK r25+ : pas de binaire ndk-version (source.properties à la place).
+          grep 'Pkg.ReleaseName' "$ANDROID_NDK_HOME/source.properties"
 
       - name: Install flutter
         uses: subosito/flutter-action@2783a3f08e1baf891508463f8c6653c258246225 # v2.12.0
