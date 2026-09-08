@@ -116,18 +116,44 @@ jobs:
         # `quick-support`, cross-platform). Les .so sont copiés dans jniLibs.
         shell: bash
         run: |
+          # bindgen (magnum-opus, scrap, kcp-sys…) : sans target versionné + sysroot NDK,
+          # il parse avec le clang hôte → stdint.h hôte incompatible (bits/libc-header-start).
+          SYS="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
+          export BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--target=aarch64-linux-android21 --sysroot=$SYS -I$SYS/usr/include/aarch64-linux-android"
+          export BINDGEN_EXTRA_CLANG_ARGS_armv7_linux_androideabi="--target=armv7a-linux-androideabi21 --sysroot=$SYS -I$SYS/usr/include/arm-linux-androideabi"
           cargo ndk --platform 21 -t arm64-v8a -t armeabi-v7a \
-            -o android/app/src/main/jniLibs \
+            -o flutter/android/app/src/main/jniLibs \
             build --locked --release --features flutter,hwcodec,quick-support
-          ls -la android/app/src/main/jniLibs/arm64-v8a/ android/app/src/main/jniLibs/armeabi-v7a/
+          # Le [lib] produit liblibrustdesk.so ; System.loadLibrary("rustdesk") attend librustdesk.so.
+          mv flutter/android/app/src/main/jniLibs/arm64-v8a/liblibrustdesk.so flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
+          mv flutter/android/app/src/main/jniLibs/armeabi-v7a/liblibrustdesk.so flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
+          ls -la flutter/android/app/src/main/jniLibs/arm64-v8a/ flutter/android/app/src/main/jniLibs/armeabi-v7a/
 
       - name: Strip native libs (taille APK)
         shell: bash
         run: |
           $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip \
-            android/app/src/main/jniLibs/arm64-v8a/*.so
+            flutter/android/app/src/main/jniLibs/arm64-v8a/*.so
           $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip \
-            android/app/src/main/jniLibs/armeabi-v7a/*.so
+            flutter/android/app/src/main/jniLibs/armeabi-v7a/*.so
+
+      - name: Setup release signing (keystore local)
+        # Keystore dédié FlowLINE persisté dans $HOME (jamais commité). Pour une vraie
+        # publication Play Store, un keystore officiel sera stocké en secret GitHub.
+        shell: bash
+        run: |
+          KS="$HOME/flowline-android.keystore"
+          if [ ! -f "$KS" ]; then
+            keytool -genkeypair -v -keystore "$KS" -alias flowline -keyalg RSA -keysize 2048 \
+              -validity 10000 -storepass flowline -keypass flowline \
+              -dname "CN=FlowLINE, OU=StreamLINE, O=StreamLINE Solutions, C=CH" 2>/dev/null
+          fi
+          cat > flutter/android/key.properties <<EOF
+          storeFile=$HOME/flowline-android.keystore
+          storePassword=flowline
+          keyPassword=flowline
+          keyAlias=flowline
+          EOF
 
       - name: Build FlowLINE Support APK
         shell: bash
