@@ -17,6 +17,9 @@ env:
   RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
   RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
   FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
+  # PAT org pour les clones git des dépendances privées (pubspec: rustdesk-org/*)
+  # + submodules. Le GITHUB_TOKEN du job ne voit que le repo courant.
+  GITHUB_TOKEN: ${{ secrets.FLOWLINE_GH_TOKEN }}
 
 jobs:
   build-macos:
@@ -44,6 +47,16 @@ jobs:
           # Repos privés (flowline-hbb-common...) : GITHUB_TOKEN du job ne voit
           # que le repo courant → PAT org (secret FLOWLINE_GH_TOKEN) pour les submodules.
           token: ${{ secrets.FLOWLINE_GH_TOKEN }}
+
+      - name: Configure git credentials (deps git privées, pubspec rustdesk-org/*)
+        # flutter pub get clone les deps git privées dans le cache pub (~/.pub-cache)
+        # : le credential du checkout ne s'applique pas à ces clones → helper global.
+        # GIT_CONFIG_GLOBAL = config job-only (ne touche pas au ~/.gitconfig).
+        shell: bash
+        run: |
+          GITCFG="$RUNNER_TEMP/git-global.conf"
+          git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+          echo "GIT_CONFIG_GLOBAL=$GITCFG" >> "$GITHUB_ENV"
 
       - name: Install build runtime
         run: |
