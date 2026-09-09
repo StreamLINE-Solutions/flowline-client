@@ -79,7 +79,5 @@ AppDir:
       GST_PLUGIN_PATH: /lib64/gstreamer-1.0:/usr/lib/aarch64-linux-gnu/gstreamer-1.0:$APPDIR/usr/lib/aarch64-linux-gnu/gstreamer-1.0
       GST_PLUGIN_SYSTEM_PATH: /lib64/gstreamer-1.0:/usr/lib/aarch64-linux-gnu/gstreamer-1.0:$APPDIR/usr/lib/aarch64-linux-gnu/gstreamer-1.0
 AppImage:
-AppImage:
   arch: aarch64
   update-information: guess
-  comp: gzip
