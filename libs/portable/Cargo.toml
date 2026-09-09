@@ -2,7 +2,7 @@
 name = "rustdesk-portable-packer"
 version = "1.4.12"
 edition = "2021"
-description = "FalconQS Remote Desktop (rebrand RustDesk 1.4.9)"
+description = "FlowLINE Remote Desktop (white-label RustDesk 1.4.12)"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

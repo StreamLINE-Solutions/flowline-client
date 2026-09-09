@@ -4,7 +4,7 @@ version = "1.4.12"
 authors = ["rustdesk <info@rustdesk.com>"]
 edition = "2021"
 build= "build.rs"
-description = "FalconQS Remote Desktop (rebrand RustDesk 1.4.9)"
+description = "FlowLINE Remote Desktop (white-label RustDesk 1.4.12)"
 default-run = "rustdesk"
 rust-version = "1.75"
 

@@ -34,7 +34,7 @@ env:
 jobs:
   build-windows-x64:
     name: FlowLINE + Support (x86_64-pc-windows-msvc)
-    # Build self-hosted sur la VM win11 (runner C:\actions-runner). Prérequis :
+    # Build self-hosted (Windows). Prérequis :
     # VS Build Tools (workload VCTools + Windows SDK). Un seul job build les 2
     # variantes en séquence (runner self-hosted = 1 job à la fois), le 2e build
     # profite du cache. Le bridge (flutter_rust_bridge) est commité.

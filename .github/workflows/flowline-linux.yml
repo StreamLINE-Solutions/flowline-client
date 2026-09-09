@@ -24,8 +24,8 @@ env:
 jobs:
   build-linux-x64:
     name: FlowLINE + Support (x86_64-unknown-linux-gnu)
-    # Build self-hosted sur le laptop Lucas (runner ~/projets/actions-runner,
-    # Pop!_OS 24.04). Labels = défauts du runner (matching sensible à la casse).
+    # Build self-hosted (Pop!_OS 24.04). Labels = défauts du runner (matching
+    # sensible à la casse).
     # Un seul job build les 2 variantes en séquence (runner self-hosted = 1 job
     # à la fois) : le 2e build profite du cache cargo (souvent 1,3-1,5x un build
     # simple au lieu de 2x). Le bridge (flutter_rust_bridge) est commité.

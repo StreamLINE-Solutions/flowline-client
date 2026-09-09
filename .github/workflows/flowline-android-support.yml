@@ -1,11 +1,11 @@
 name: Build FlowLINE Android (Support)
 
 on:
-  # Build déclenché MANUELLEMENT (workflow_dispatch). Build self-hosted sur le
-  # laptop Lucas (runner ~/projets/actions-runner, Pop!_OS 24.04 — même runner
-  # que Linux). Prérequis runner : Android SDK + NDK r25c+ + targets rust android
-  # + cargo-ndk, installés par le playbook flowline-runner-android-setup.yml
-  # (variables ANDROID_HOME / ANDROID_NDK_HOME via le .env du runner).
+  # Build déclenché MANUELLEMENT (workflow_dispatch). Build self-hosted
+  # (Pop!_OS 24.04 — même runner que Linux). Prérequis runner : Android SDK +
+  # NDK r25c+ + targets rust android + cargo-ndk, installés par le playbook
+  # flowline-runner-android-setup.yml (ANDROID_HOME / ANDROID_NDK_HOME via le
+  # .env du runner).
   workflow_dispatch:
 
 env:

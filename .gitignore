@@ -15,7 +15,7 @@ src/version.rs
 cert.pfx
 *.bak
 *png
-# FalconQS brand assets (force-tracked despite *png above)
+# FlowLINE brand assets (force-tracked despite *png above)
 !flutter/assets/logo.png
 !flutter/assets/logo_light.png
 !flutter/assets/logo_dark.png
