@@ -416,6 +416,9 @@ def build_flutter_dmg(version, features):
     system2(
         f'FLUTTER_XCODE_ARCHS={mac_arch} FLUTTER_XCODE_ONLY_ACTIVE_ARCH=YES flutter build macos --release')
     system2('cp -rf ../target/release/service ./build/macos/Build/Products/Release/FlowLINE.app/Contents/MacOS/')
+    # Signature adhoc du binaire service injecté : sans codesign, xcodebuild refuse
+    # le bundle ("code object is not signed at all" -> BUILD FAILED au 2e build).
+    system2('codesign --force --sign - ./build/macos/Build/Products/Release/FlowLINE.app/Contents/MacOS/service')
     '''
     system2(
         "create-dmg --volname \"FlowLINE Installer\" --window-pos 200 120 --window-size 800 400 --icon-size 100 --app-drop-link 600 185 --icon FlowLINE.app 200 190 --hide-extension FlowLINE.app flowline.dmg ./build/macos/Build/Products/Release/FlowLINE.app")
