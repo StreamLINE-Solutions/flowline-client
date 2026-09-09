@@ -162,7 +162,7 @@ jobs:
         # fallback sur comparaison de chaînes. Regex robuste (indentation
         # réelle détectée, aucun espace en dur).
         run: |
-          sudo apt-get install -y --no-install-recommends libarchive-tools >/dev/null
+          sudo apt-get install -y --no-install-recommends libarchive-tools squashfs-tools >/dev/null
           python3 -m venv /tmp/appimage-venv
           /tmp/appimage-venv/bin/pip install --quiet appimage-builder
           /tmp/appimage-venv/bin/python - <<'PY'
