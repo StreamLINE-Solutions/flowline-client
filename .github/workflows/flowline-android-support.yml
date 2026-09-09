@@ -138,22 +138,29 @@ jobs:
             flutter/android/app/src/main/jniLibs/armeabi-v7a/*.so
 
       - name: Setup release signing (keystore local)
-        # Keystore dédié FlowLINE persisté dans $HOME (jamais commité). Pour une vraie
-        # publication Play Store, un keystore officiel sera stocké en secret GitHub.
+        # Keystore de PRODUCTION : ~/flowline-key.properties (hors repo) sur le runner
+        # self-hosted → copié tel quel. Fallback si absent : keystore jetable (artefact
+        # "unsigned", pour validation uniquement, JAMAIS de publication).
         shell: bash
         run: |
-          KS="$HOME/flowline-android.keystore"
-          if [ ! -f "$KS" ]; then
-            keytool -genkeypair -v -keystore "$KS" -alias flowline -keyalg RSA -keysize 2048 \
-              -validity 10000 -storepass flowline -keypass flowline \
-              -dname "CN=FlowLINE, OU=StreamLINE, O=StreamLINE Solutions, C=CH" 2>/dev/null
+          if [ -f "$HOME/flowline-key.properties" ]; then
+            cp "$HOME/flowline-key.properties" flutter/android/key.properties
+            echo "OK: signature avec le keystore de production (local)"
+          else
+            KS="$HOME/flowline-android.keystore"
+            if [ ! -f "$KS" ]; then
+              keytool -genkeypair -v -keystore "$KS" -alias flowline -keyalg RSA -keysize 2048 \
+                -validity 10000 -storepass flowline -keypass flowline \
+                -dname "CN=FlowLINE, OU=StreamLINE, O=StreamLINE Solutions, C=CH" 2>/dev/null
+            fi
+            cat > flutter/android/key.properties <<EOF
+            storeFile=$HOME/flowline-android.keystore
+            storePassword=flowline
+            keyPassword=flowline
+            keyAlias=flowline
+            EOF
+            echo "WARN: keystore jetable (fallback) — pas de clé de production"
           fi
-          cat > flutter/android/key.properties <<EOF
-          storeFile=$HOME/flowline-android.keystore
-          storePassword=flowline
-          keyPassword=flowline
-          keyAlias=flowline
-          EOF
 
       - name: Build FlowLINE Support APK
         shell: bash
