@@ -7,7 +7,7 @@ script:
  - mkdir ./AppDir
  - mv ./usr ./AppDir/usr
  # icônes multi-tailles (le .deb fournit 256x256/apps/flowline.png)
- - for i in {32,64,128}; do mkdir -p ./AppDir/usr/share/icons/hicolor/$i\x$i/apps/; cp ../res/$i\x$i.png ./AppDir/usr/share/icons/hicolor/$i\x$i/apps/flowline.png; done
+ - for i in {32,64,128}; do mkdir -p ./AppDir/usr/share/icons/hicolor/$i\x$i/apps/; cp res/$i\x$i.png ./AppDir/usr/share/icons/hicolor/$i\x$i/apps/flowline.png; done
  # desktop file
  - rm -rf ./AppDir/usr/share/applications
 AppDir:
