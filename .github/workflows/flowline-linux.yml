@@ -156,10 +156,32 @@ jobs:
       - name: Install appimage-builder
         # Venv temporaire (PEP 668 : pip système bloqué). appimage-builder
         # construit l'AppImage depuis le .deb via la recette appimage/.
+        # Patch package.py : les versions Debian/Ubuntu non-PEP440 (ex
+        # 1.19.7ubuntu3) font planter packaging.Version dans
+        # _remove_old_packages() pendant la préparation du apt venv →
+        # fallback sur comparaison de chaînes.
         run: |
           sudo apt-get install -y --no-install-recommends libarchive-tools >/dev/null
           python3 -m venv /tmp/appimage-venv
           /tmp/appimage-venv/bin/pip install --quiet appimage-builder
+          /tmp/appimage-venv/bin/python - <<'PY'
+          from pathlib import Path
+          import appimagebuilder
+          target = Path(appimagebuilder.__file__).parent / "modules" / "deploy" / "apt" / "package.py"
+          src = target.read_text()
+          old = """    def __gt__(self, other):
+              if isinstance(other, Package):
+                  return version.parse(self.version) > version.parse(other.version)"""
+          new = """    def __gt__(self, other):
+              if isinstance(other, Package):
+                  try:
+                      return version.parse(self.version) > version.parse(other.version)
+                  except Exception:
+                      return self.version > other.version"""
+          assert old in src, "appimage-builder patch: pattern introuvable"
+          target.write_text(src.replace(old, new))
+          print("appimage-builder patched (versions non-PEP440)")
+          PY
 
       - name: Build FlowLINE (technicien)
         env:
