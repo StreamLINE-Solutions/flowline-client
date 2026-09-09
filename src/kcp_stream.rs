@@ -8,18 +8,27 @@ use hbb_common::{
     tokio_util, ResultType, Stream,
 };
 use kcp_sys::{
-    endpoint::KcpEndpoint,
+    endpoint::{ConnId, KcpEndpoint},
     packet_def::{KcpPacket, KcpPacketHeader},
     stream,
 };
 use std::{net::SocketAddr, sync::Arc};
 
 pub struct KcpStream {
-    _endpoint: KcpEndpoint,
+    endpoint: KcpEndpoint,
+    conn_id: ConnId,
     stop_sender: Option<oneshot::Sender<()>>,
 }
 
 impl KcpStream {
+    /// How long since a valid packet was last received from the peer, or `None` once the
+    /// connection is gone. Answered by the KCP endpoint's own tasks, not by the session's read
+    /// loop, so it stays meaningful while that loop is busy sending a large message; and the
+    /// endpoint pings an idle peer often enough that silence here means the peer, not quiet.
+    pub fn peer_silent_for(&self) -> Option<std::time::Duration> {
+        self.endpoint.peer_silent_for(&self.conn_id)
+    }
+
     fn create_framed(stream: stream::KcpStream, local_addr: Option<SocketAddr>) -> Stream {
         Stream::Tcp(FramedStream(
             tokio_util::codec::Framed::new(DynTcpStream(Box::new(stream)), BytesCodec::new()),
@@ -55,7 +64,8 @@ impl KcpStream {
         if let Some(stream) = stream::KcpStream::new(&endpoint, conn_id) {
             Ok((
                 Self {
-                    _endpoint: endpoint,
+                    endpoint,
+                    conn_id,
                     stop_sender: Some(stop_sender),
                 },
                 Self::create_framed(stream, udp_socket.local_addr().ok()),
@@ -85,7 +95,8 @@ impl KcpStream {
         if let Some(stream) = stream::KcpStream::new(&endpoint, conn_id) {
             Ok((
                 Self {
-                    _endpoint: endpoint,
+                    endpoint,
+                    conn_id,
                     stop_sender: Some(stop_sender),
                 },
                 Self::create_framed(stream, udp_socket.local_addr().ok()),
