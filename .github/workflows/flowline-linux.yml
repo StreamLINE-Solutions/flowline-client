@@ -159,27 +159,31 @@ jobs:
         # Patch package.py : les versions Debian/Ubuntu non-PEP440 (ex
         # 1.19.7ubuntu3) font planter packaging.Version dans
         # _remove_old_packages() pendant la préparation du apt venv →
-        # fallback sur comparaison de chaînes.
+        # fallback sur comparaison de chaînes. Regex robuste (indentation
+        # réelle détectée, aucun espace en dur).
         run: |
           sudo apt-get install -y --no-install-recommends libarchive-tools >/dev/null
           python3 -m venv /tmp/appimage-venv
           /tmp/appimage-venv/bin/pip install --quiet appimage-builder
           /tmp/appimage-venv/bin/python - <<'PY'
+          import re
           from pathlib import Path
           import appimagebuilder
           target = Path(appimagebuilder.__file__).parent / "modules" / "deploy" / "apt" / "package.py"
           src = target.read_text()
-          old = """    def __gt__(self, other):
-              if isinstance(other, Package):
-                  return version.parse(self.version) > version.parse(other.version)"""
-          new = """    def __gt__(self, other):
-              if isinstance(other, Package):
-                  try:
-                      return version.parse(self.version) > version.parse(other.version)
-                  except Exception:
-                      return self.version > other.version"""
-          assert old in src, "appimage-builder patch: pattern introuvable"
-          target.write_text(src.replace(old, new))
+          pattern = r"def __gt__\(self, other\):\n(\s+)if isinstance\(other, Package\):\n\s+return version\.parse\(self\.version\) > version\.parse\(other\.version\)"
+          m = re.search(pattern, src)
+          assert m, "appimage-builder patch: pattern introuvable"
+          ind = m.group(1)
+          replacement = (
+              "def __gt__(self, other):\n"
+              + ind + "if isinstance(other, Package):\n"
+              + ind + "    try:\n"
+              + ind + "        return version.parse(self.version) > version.parse(other.version)\n"
+              + ind + "    except Exception:\n"
+              + ind + "        return self.version > other.version"
+          )
+          target.write_text(src.replace(m.group(0), replacement))
           print("appimage-builder patched (versions non-PEP440)")
           PY
 
