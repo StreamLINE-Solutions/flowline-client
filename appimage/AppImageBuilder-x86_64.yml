@@ -2,8 +2,8 @@
 version: 1
 script:
  - rm -rf ./AppDir || true
- - bsdtar -zxvf flowline.deb
- - tar -xvf ./data.tar.xz
+ - bsdtar -xf flowline.deb
+ - tar -xf ./data.tar.*
  - mkdir ./AppDir
  - mv ./usr ./AppDir/usr
  # icônes multi-tailles (le .deb fournit 256x256/apps/flowline.png)
