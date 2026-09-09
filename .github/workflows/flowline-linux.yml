@@ -163,6 +163,7 @@ jobs:
         # réelle détectée, aucun espace en dur).
         run: |
           sudo apt-get install -y --no-install-recommends libarchive-tools squashfs-tools >/dev/null
+          rm -rf /tmp/appimage-venv
           python3 -m venv /tmp/appimage-venv
           /tmp/appimage-venv/bin/pip install --quiet appimage-builder
           /tmp/appimage-venv/bin/python - <<'PY'
