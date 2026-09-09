@@ -383,7 +383,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("xdp-portal-unavailable", ""),
         ("JumpLink", ""),
         ("Please Select the screen to be shared(Operate on the peer side).", ""),
-        ("Show RustDesk", ""),
+        ("Show FlowLINE", ""),
         ("This PC", ""),
         ("or", ""),
         ("Elevate", ""),
