@@ -1,0 +1,15 @@
+name: FlowLINE
+repository: https://github.com/StreamLINE-Solutions/flowline-client
+release_source: https://flowline.my-vth.ch/downloads/flowline-1.4.12-android.apk
+pubkey: npub1r2e3wdku9d39qdxrlqx35w7azad4s955wazfmgvgyphh2t0lglfqs05fmf
+summary: Client de contrôle à distance FlowLINE
+description: |
+  FlowLINE permet de prendre le contrôle à distance d'un poste (Windows, macOS,
+  Linux) ou d'un mobile (Android), en mode technicien (accès non surveillé) ou en
+  mode support (QuickSupport, accès sous contrôle de la personne dépannée).
+tags:
+  - remote-desktop
+  - support
+  - productivity
+license: AGPL-3.0
+website: https://flowline.my-vth.ch
