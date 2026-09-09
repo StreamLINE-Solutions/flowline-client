@@ -36,7 +36,7 @@ class SettingsPage extends StatefulWidget implements PageShape {
   State<SettingsPage> createState() => _SettingsState();
 }
 
-const url = 'https://rustdesk.com/';
+const url = 'https://flowline.my-vth.ch/';
 
 enum KeepScreenOn {
   never,
@@ -530,7 +530,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
               title: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(translate('Keep RustDesk background service')),
+                    Text(translate('Keep FlowLINE background service')),
                     Text('* ${translate('Ignore Battery Optimizations')}',
                         style: Theme.of(context).textTheme.bodySmall),
                   ]),
@@ -642,7 +642,8 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
       gFFI.serverModel.androidUpdatekeepScreenOn();
     }
 
-    enhancementsTiles.add(SettingsTile.switchTile(
+    if (!incomingOnly)
+      enhancementsTiles.add(SettingsTile.switchTile(
         initialValue: !_floatingWindowDisabled,
         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(translate('Floating window')),
@@ -722,21 +723,21 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
                     setState(callback);
                   });
                 }),
-          if (!_hideNetwork && !_hideProxy)
+          if (!_hideNetwork && !_hideProxy && !incomingOnly)
             SettingsTile(
                 title: Text(translate('Socks5/Http(s) Proxy')),
                 leading: Icon(Icons.network_ping),
                 onPressed: (context) {
                   changeSocks5Proxy();
                 }),
-          if (isAndroid && !bind.isOutgoingOnly())
+          if (isAndroid && !bind.isOutgoingOnly() && !incomingOnly)
             SettingsTile(
                 title: Text(translate('Deploy')),
                 leading: Icon(Icons.cloud_upload),
                 onPressed: (context) {
                   showDeployDialog();
                 }),
-          if (!disabledSettings && !_hideNetwork && !_hideWebSocket)
+          if (!disabledSettings && !_hideNetwork && !_hideWebSocket && !incomingOnly)
             SettingsTile.switchTile(
               title: Text(translate('Use WebSocket')),
               initialValue: _allowWebSocket,
@@ -751,7 +752,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
                       });
                     },
             ),
-          if (!_isUsingPublicServer)
+          if (!_isUsingPublicServer && !incomingOnly)
             SettingsTile.switchTile(
               title: Text(translate('Allow insecure TLS fallback')),
               initialValue: _allowInsecureTlsFallback,
@@ -767,7 +768,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
                       });
                     },
             ),
-          if (isAndroid && !outgoingOnly && !_isUsingPublicServer)
+          if (isAndroid && !outgoingOnly && !_isUsingPublicServer && !incomingOnly)
             SettingsTile.switchTile(
               title: Text(translate('Disable UDP')),
               initialValue: _disableUdp,
@@ -859,7 +860,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
               },
             ),
         ]),
-        if (isAndroid)
+        if (isAndroid && !incomingOnly)
           SettingsSection(title: Text(translate('Hardware Codec')), tiles: [
             SettingsTile.switchTile(
               title: Text(translate('Enable hardware codec')),
@@ -876,7 +877,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
                     },
             ),
           ]),
-        if (isAndroid)
+        if (isAndroid && !incomingOnly)
           SettingsSection(
             title: Text(translate("Recording")),
             tiles: [
@@ -934,6 +935,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
             !hideSecuritySettings)
           SettingsSection(title: Text('2FA'), tiles: tfaTiles),
         if (isAndroid &&
+            !incomingOnly &&
             !disabledSettings &&
             !outgoingOnly &&
             !hideSecuritySettings)
@@ -960,7 +962,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
                 title: Text(translate("Version: ") + version),
                 value: Padding(
                   padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text('rustdesk.com',
+child: Text('flowline.my-vth.ch',
                       style: TextStyle(
                         decoration: TextDecoration.underline,
                       )),
@@ -984,8 +986,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
                   leading: Icon(Icons.fingerprint)),
             SettingsTile(
               title: Text(translate("Privacy Statement")),
-              onPressed: (context) =>
-                  launchUrlString('https://rustdesk.com/privacy.html'),
+              onPressed: (context) => launchUrlString(url),
               leading: Icon(Icons.privacy_tip),
             )
           ],
@@ -1093,17 +1094,16 @@ void showThemeSettings(OverlayDialogManager dialogManager) async {
 void showAbout(OverlayDialogManager dialogManager) {
   dialogManager.show((setState, close, context) {
     return CustomAlertDialog(
-      title: Text(translate('About RustDesk')),
+      title: Text(translate('About FlowLINE')),
       content: Wrap(direction: Axis.vertical, spacing: 12, children: [
         Text('Version: $version'),
         InkWell(
             onTap: () async {
-              const url = 'https://rustdesk.com/';
               await launchUrl(Uri.parse(url));
             },
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text('rustdesk.com',
+              child: Text('flowline.my-vth.ch',
                   style: TextStyle(
                     decoration: TextDecoration.underline,
                   )),

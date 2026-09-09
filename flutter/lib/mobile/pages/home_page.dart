@@ -47,14 +47,16 @@ class HomePageState extends State<HomePage> {
 
   void initPages() {
     _pages.clear();
-    if (!bind.isIncomingOnly()) {
-      _pages.add(ConnectionPage(
-        appBarActions: [],
-      ));
+    if (bind.isIncomingOnly()) {
+      // FlowLINE support : écran unique ID + mot de passe (pas d'onglets).
+      _pages.add(ServerPage());
+      return;
     }
     if (isAndroid && !bind.isOutgoingOnly()) {
       _chatPageTabIndex = _pages.length;
-      _pages.addAll([ChatPage(type: ChatPageType.mobileMain), ServerPage()]);
+      _pages.addAll([ConnectionPage(appBarActions: []), ChatPage(type: ChatPageType.mobileMain), ServerPage()]);
+    } else {
+      _pages.add(ConnectionPage(appBarActions: []));
     }
     _pages.add(SettingsPage());
   }
@@ -79,19 +81,20 @@ class HomePageState extends State<HomePage> {
             title: appTitle(),
             actions: _pages.elementAt(_selectedIndex).appBarActions,
           ),
-          bottomNavigationBar: BottomNavigationBar(
-            key: navigationBarKey,
-            items: _pages
-                .map((page) =>
-                    BottomNavigationBarItem(icon: page.icon, label: page.title))
-                .toList(),
-            currentIndex: _selectedIndex,
-            type: BottomNavigationBarType.fixed,
-            selectedItemColor: MyTheme.accent, //
-            unselectedItemColor: MyTheme.darkGray,
-            onTap: (index) => setState(() {
-              // close chat overlay when go chat page
-              if (_selectedIndex != index) {
+          bottomNavigationBar: _pages.length > 1
+              ? BottomNavigationBar(
+                  key: navigationBarKey,
+                  items: _pages
+                      .map((page) => BottomNavigationBarItem(
+                          icon: page.icon, label: page.title))
+                      .toList(),
+                  currentIndex: _selectedIndex,
+                  type: BottomNavigationBarType.fixed,
+                  selectedItemColor: MyTheme.accent, //
+                  unselectedItemColor: MyTheme.darkGray,
+                  onTap: (index) => setState(() {
+                    // close chat overlay when go chat page
+                    if (_selectedIndex != index) {
                 _selectedIndex = index;
                 if (isChatPageCurrentTab) {
                   gFFI.chatModel.hideChatIconOverlay();
@@ -101,7 +104,8 @@ class HomePageState extends State<HomePage> {
                 }
               }
             }),
-          ),
+          )
+          : const SizedBox.shrink(),
           body: _pages.elementAt(_selectedIndex),
         ));
   }
