@@ -17,3 +17,17 @@ subprojects {
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
+
+subprojects {
+    plugins.withId("com.android.library") {
+        android {
+            if (namespace == null) {
+                def mf = file("src/main/AndroidManifest.xml")
+                if (mf.exists()) {
+                    def parsed = new groovy.util.XmlSlurper().parse(mf)
+                    namespace = parsed.@package.text()
+                }
+            }
+        }
+    }
+}
