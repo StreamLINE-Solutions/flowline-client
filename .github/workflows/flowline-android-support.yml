@@ -153,12 +153,10 @@ jobs:
                 -validity 10000 -storepass flowline -keypass flowline \
                 -dname "CN=FlowLINE, OU=StreamLINE, O=StreamLINE Solutions, C=CH" 2>/dev/null
             fi
-            cat > flutter/android/key.properties <<EOF
-            storeFile=$HOME/flowline-android.keystore
-            storePassword=flowline
-            keyPassword=flowline
-            keyAlias=flowline
-            EOF
+            echo "storeFile=$HOME/flowline-android.keystore" > flutter/android/key.properties
+            echo "storePassword=flowline" >> flutter/android/key.properties
+            echo "keyPassword=flowline" >> flutter/android/key.properties
+            echo "keyAlias=flowline" >> flutter/android/key.properties
             echo "WARN: keystore jetable (fallback) — pas de clé de production"
           fi
 
