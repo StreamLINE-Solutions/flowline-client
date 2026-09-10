@@ -53,12 +53,17 @@ jobs:
           git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
           echo "GIT_CONFIG_GLOBAL=$GITCFG" >> "$GITHUB_ENV"
 
-      - name: Guard - Android SDK/NDK + cargo-ndk préinstallés (playbook runner)
+      - name: Guard - Android SDK/NDK + cargo-ndk (installation auto si absent)
         shell: bash
         run: |
           : "${ANDROID_HOME:?ANDROID_HOME absent — lancer le playbook flowline-runner-android-setup.yml}"
           : "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME absent — lancer le playbook flowline-runner-android-setup.yml}"
-          command -v cargo-ndk >/dev/null || { echo "cargo-ndk absent — lancer le playbook runner"; exit 1; }
+          # Les runs CI réinstallent rustup (dtolnay/rust-toolchain) et font
+          # disparaître cargo-ndk de ~/.cargo/bin → réinstallation auto idempotente.
+          if ! command -v cargo-ndk >/dev/null; then
+            echo "cargo-ndk absent — installation (cargo install cargo-ndk 3.5.4)"
+            cargo install cargo-ndk --locked --version 3.5.4
+          fi
           echo "SDK: $ANDROID_HOME"
           echo "NDK: $ANDROID_NDK_HOME"
           cargo ndk --version
