@@ -162,6 +162,7 @@ jobs:
 
       - name: Build FlowLINE Support APK
         shell: bash
+        working-directory: flutter
         run: |
           flutter precache --android
           flutter build apk --release --target-platform android-arm64,android-arm
@@ -171,5 +172,5 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: flowline-support-unsigned-android-${{ env.VERSION }}
-          path: flowline-support-${{ env.VERSION }}.apk
+          path: flutter/flowline-support-${{ env.VERSION }}.apk
           retention-days: 30
