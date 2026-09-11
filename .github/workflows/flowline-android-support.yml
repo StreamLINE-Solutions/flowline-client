@@ -173,9 +173,18 @@ jobs:
           flutter build apk --release --target-platform android-arm64,android-arm
           cp build/app/outputs/flutter-apk/app-release.apk flowline-support-${{ env.VERSION }}.apk
 
+      - name: Build FlowLINE Support AAB (Play Store)
+        shell: bash
+        working-directory: flutter
+        run: |
+          flutter build appbundle --release --target-platform android-arm64,android-arm
+          cp build/app/outputs/bundle/release/app-release.aab flowline-support-${{ env.VERSION }}.aab
+
       - name: Upload FlowLINE Support APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: flowline-support-unsigned-android-${{ env.VERSION }}
-          path: flutter/flowline-support-${{ env.VERSION }}.apk
+          name: flowline-support-android-${{ env.VERSION }}
+          path: |
+            flutter/flowline-support-${{ env.VERSION }}.apk
+            flutter/flowline-support-${{ env.VERSION }}.aab
           retention-days: 30
