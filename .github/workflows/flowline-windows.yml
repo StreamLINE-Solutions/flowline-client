@@ -206,7 +206,7 @@ jobs:
       # msbuild. L'icône res/msi/icon.ico est copiée dans Package/Resources par
       # preprocess.py (dossier git-ignoré) ; les bitmaps du wizard sont versionnés.
       - name: Setup NuGet (restore WiX)
-        uses: NuGet/setup-nuget@6dce1b473349006b8fb850548eb7c04c0a56fa0b # v2
+        uses: NuGet/setup-nuget@d105a947828025cd7a980103c35ba2bfae586d0f # v2
         with:
           nuget-version: latest
 
