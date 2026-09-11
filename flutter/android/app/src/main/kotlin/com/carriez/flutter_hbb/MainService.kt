@@ -339,7 +339,7 @@ class MainService : Service() {
             intent.getParcelableExtra<Intent>(EXT_MEDIA_PROJECTION_RES_INTENT)?.let {
                 mediaProjection =
                     mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, it)
-                registerMediaProjectionCallback(mediaProjection)
+                registerMediaProjectionCallback(mediaProjection!!)
                 checkMediaPermission()
                 _isReady = true
             } ?: let {
