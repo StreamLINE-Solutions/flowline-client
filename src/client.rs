@@ -129,7 +129,6 @@ pub const SCRAP_OTHER_VERSION_OR_X11_REQUIRED: &str =
 pub const SCRAP_XDP_PORTAL_UNAVAILABLE: &str =
     "xdp-portal-unavailable";
 pub const SCRAP_X11_REQUIRED: &str = "x11 expected";
-pub const SCRAP_X11_REF_URL: &str = "https://rustdesk.com/docs/en/manual/linux/#x11-required";
 
 #[cfg(not(target_os = "linux"))]
 pub const AUDIO_BUFFER_MS: usize = 3000;
@@ -3332,12 +3331,11 @@ struct LoginErrorMsgBox {
 
 lazy_static::lazy_static! {
     static ref LOGIN_ERROR_MAP: Arc<HashMap<&'static str, LoginErrorMsgBox>> = {
-        use config::LINK_HEADLESS_LINUX_SUPPORT;
         let map = HashMap::from([(LOGIN_SCREEN_WAYLAND, LoginErrorMsgBox{
             msgtype: "error",
             title: "Login Error",
             text: "Login screen using Wayland is not supported",
-            link: "https://rustdesk.com/docs/en/manual/linux/#login-screen",
+            link: "",
             try_again: true,
         }), (LOGIN_MSG_DESKTOP_SESSION_NOT_READY, LoginErrorMsgBox{
             msgtype: "session-login",
@@ -3361,13 +3359,13 @@ lazy_static::lazy_static! {
             msgtype: "info-nocancel",
             title: "xorg_not_found_title_tip",
             text: "xorg_not_found_text_tip",
-            link: LINK_HEADLESS_LINUX_SUPPORT,
+            link: "",
             try_again: true,
         }), (LOGIN_MSG_DESKTOP_NO_DESKTOP, LoginErrorMsgBox{
             msgtype: "info-nocancel",
             title: "no_desktop_title_tip",
             text: "no_desktop_text_tip",
-            link: LINK_HEADLESS_LINUX_SUPPORT,
+            link: "",
             try_again: true,
         }), (LOGIN_MSG_DESKTOP_SESSION_NOT_READY_PASSWORD_EMPTY, LoginErrorMsgBox{
             msgtype: "session-login-password",
@@ -3431,7 +3429,7 @@ pub fn handle_login_error(
         }
     } else {
         if err.contains(SCRAP_X11_REQUIRED) {
-            interface.msgbox("error", "Login Error", err, SCRAP_X11_REF_URL);
+            interface.msgbox("error", "Login Error", err, "");
         } else {
             interface.msgbox("error", "Login Error", err, "");
         }
