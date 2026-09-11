@@ -7,10 +7,7 @@ images:
   - https://flowline.my-vth.ch/images/screenshots/flowline-home.png
   - https://flowline.my-vth.ch/images/screenshots/flowline-screen-share.png
 summary: Client de contrôle à distance FlowLINE
-description: |
-  FlowLINE permet de prendre le contrôle à distance d'un poste (Windows, macOS,
-  Linux) ou d'un mobile (Android), en mode technicien (accès non surveillé) ou en
-  mode support (QuickSupport, accès sous contrôle de la personne dépannée).
+description: FlowLINE — client de contrôle à distance (Windows, macOS, Linux, Android).
 tags:
   - remote-desktop
   - support
