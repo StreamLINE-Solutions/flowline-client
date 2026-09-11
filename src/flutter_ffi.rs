@@ -2489,7 +2489,10 @@ pub fn is_disable_account() -> SyncReturn<bool> {
 }
 
 pub fn is_disable_group_panel() -> SyncReturn<bool> {
-    SyncReturn(LocalConfig::get_option("disable-group-panel") == "Y")
+    // FlowLINE TEMPORAIRE (task 0034) : le backend ne sert pas encore les endpoints
+    // device-group/users/peers → HTTP 404 sur le GroupPanel. On masque l'onglet
+    // jusqu'à l'implémentation du backend. Revenir sur LocalConfig une fois fait.
+    SyncReturn(true)
 }
 
 // windows only

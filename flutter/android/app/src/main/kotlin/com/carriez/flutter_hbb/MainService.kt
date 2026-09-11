@@ -339,6 +339,7 @@ class MainService : Service() {
             intent.getParcelableExtra<Intent>(EXT_MEDIA_PROJECTION_RES_INTENT)?.let {
                 mediaProjection =
                     mediaProjectionManager.getMediaProjection(Activity.RESULT_OK, it)
+                registerMediaProjectionCallback(mediaProjection)
                 checkMediaPermission()
                 _isReady = true
             } ?: let {
@@ -360,6 +361,20 @@ class MainService : Service() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
         startActivity(intent)
+    }
+
+    // Required since API 36: MediaProjection.createVirtualDisplay() throws
+    // IllegalStateException if no MediaProjection.Callback is registered first.
+    // Also handles Android 15+: user can stop the projection from the system UI.
+    private fun registerMediaProjectionCallback(mp: MediaProjection) {
+        mp.registerCallback(object : MediaProjection.Callback() {
+            override fun onStop() {
+                Log.d(logTag, "MediaProjection stopped (system/user), stopping capture")
+                if (isStart) {
+                    stopCapture()
+                }
+            }
+        }, Handler(Looper.getMainLooper()))
     }
 
     @SuppressLint("WrongConstant")
