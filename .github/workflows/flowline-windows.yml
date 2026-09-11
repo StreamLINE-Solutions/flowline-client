@@ -200,6 +200,31 @@ jobs:
           python .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
+      # ---- MSI (task 0035, Option A « build Windows 100 % CI ») ----
+      # Pattern upstream rustdesk (flutter-build.yml) : preprocess.py (branding +
+      # composants WiX auto) → nuget restore (WixToolset 4.0.5 + WcaUtil/DUtil) →
+      # msbuild. L'icône res/msi/icon.ico est copiée dans Package/Resources par
+      # preprocess.py (dossier git-ignoré) ; les bitmaps du wizard sont versionnés.
+      - name: Setup NuGet (restore WiX)
+        uses: NuGet/setup-nuget@6dce1b473349006b8fb850548eb7c04c0a56fa0b # v2
+        with:
+          nuget-version: latest
+
+      - name: Set up MSBuild (WiX msi.sln)
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
+
+      - name: Build FlowLINE MSI (WiX 4)
+        run: |
+          pushd ./res/msi
+          python preprocess.py --arp -d ../../rustdesk --app-name flowline -v ${{ env.VERSION }} -m "StreamLINE Solutions"
+          nuget restore msi.sln
+          msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
+          $msi = Get-ChildItem ./Package/bin/*/Release/en-us/Package.msi | Select-Object -First 1
+          popd
+          if (-not $msi) { throw "Package.msi introuvable après msbuild (res/msi)" }
+          Copy-Item -Force $msi.FullName ./flowline-${{ env.VERSION }}-x86_64.msi
+          Get-FileHash ./flowline-${{ env.VERSION }}-x86_64.msi -Algorithm SHA256 | Format-List
+
       - name: Build FlowLINE Support (QuickSupport)
         env:
           FLOWLINE_QUICK_SUPPORT: "1"
@@ -213,6 +238,14 @@ jobs:
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk-support
           mv ./rustdesk-support/flowline.exe ./rustdesk-support/flowline-support.exe
 
+      - name: Pack FlowLINE Support one-file (brotli + portable-packer)
+        run: |
+          python -m pip install -r libs/portable/requirements.txt
+          python libs/portable/generate.py -f ./rustdesk-support -o libs/portable -e ./rustdesk-support/flowline-support.exe
+          cargo build -p rustdesk-portable-packer --release
+          Copy-Item -Force ./target/release/rustdesk-portable-packer.exe ./flowline-support-${{ env.VERSION }}-onefile.exe
+          Get-FileHash ./flowline-support-${{ env.VERSION }}-onefile.exe -Algorithm SHA256 | Format-List
+
       - name: Upload FlowLINE artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -225,4 +258,18 @@ jobs:
         with:
           name: flowline-support-unsigned-windows-x64-${{ env.VERSION }}
           path: rustdesk-support
+          retention-days: 30
+
+      - name: Upload FlowLINE MSI artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flowline-msi-${{ env.VERSION }}
+          path: flowline-${{ env.VERSION }}-x86_64.msi
+          retention-days: 30
+
+      - name: Upload FlowLINE Support one-file artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flowline-support-onefile-${{ env.VERSION }}
+          path: flowline-support-${{ env.VERSION }}-onefile.exe
           retention-days: 30
