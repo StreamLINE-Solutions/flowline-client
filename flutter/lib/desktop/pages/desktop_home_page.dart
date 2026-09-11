@@ -532,7 +532,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           ));
         }
       }
-      if (bind.mainCurrentIsWayland()) {
+      if (bind.mainCurrentIsWayland() && bind.isIncomingOnly()) {
         LinuxCards.add(buildInstallCard(
             "Warning", "wayland_experiment_tip", "", () async {},
             marginTop: LinuxCards.isEmpty ? 20.0 : 5.0,
