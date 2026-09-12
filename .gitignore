@@ -20,6 +20,7 @@ cert.pfx
 !flutter/assets/logo_light.png
 !flutter/assets/logo_dark.png
 !flutter/assets/icon.png
+!images/logo.png
 *svg
 *jpg
 sciter.dll

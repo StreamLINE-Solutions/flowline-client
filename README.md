@@ -1,8 +1,17 @@
+<p align="center">
+  <img src="images/logo.png" alt="FlowLINE" width="128">
+</p>
+
 # FlowLINE
 
-FlowLINE est un client de contrôle à distance pour Windows, macOS, Linux et
+[![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
+
+**FlowLINE** est un client de contrôle à distance pour Windows, macOS, Linux et
 Android, distribué en mode technicien (accès non surveillé) et en mode support
 (QuickSupport, accès sous contrôle de la personne dépannée).
+
+Site : **[flowline.my-vth.ch](https://flowline.my-vth.ch)** — téléchargements,
+tarifs et contact.
 
 Ce projet est un **white-label de RustDesk** (AGPL-3.0). Voir `LICENSE` et
 `NOTICE.md`.
