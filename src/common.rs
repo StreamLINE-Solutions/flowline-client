@@ -873,12 +873,19 @@ pub fn get_sysinfo() -> serde_json::Value {
     };
     let num_cpus = num_cpus::get();
     let num_pcpus = num_cpus::get_physical();
-    let mut os = system.distribution_id();
-    os = format!("{} / {}", os, system.long_os_version().unwrap_or_default());
-    #[cfg(windows)]
-    {
-        os = format!("{os} - {}", system.os_version().unwrap_or_default());
-    }
+    // 0036 : OS de la cible scindé en famille/distribution (os) + version
+    // (os_version) pour un regroupement fiable par OS dans les rapports.
+    let os = system.distribution_id();
+    let os_version = {
+        #[cfg(windows)]
+        {
+            system.os_version().unwrap_or_default()
+        }
+        #[cfg(not(windows))]
+        {
+            system.long_os_version().unwrap_or_default()
+        }
+    };
     let hostname = hostname(); // sys.hostname() return localhost on android in my test
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let out;
@@ -888,7 +895,11 @@ pub fn get_sysinfo() -> serde_json::Value {
         "cpu": format!("{cpu}{num_cpus}/{num_pcpus} cores"),
         "memory": format!("{memory}GB"),
         "os": os,
+        "os_version": os_version,
         "hostname": hostname,
+        "arch": std::env::consts::ARCH,
+        "manufacturer": system.manufacturer(),
+        "model": system.model(),
     });
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
