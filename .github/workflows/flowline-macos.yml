@@ -142,7 +142,18 @@ jobs:
           fi
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
 
-      - name: create unsigned dmg (technicien)
+      - name: Codesign ad hoc (technicien)
+        # Signature uniforme du bundle : sans elle, binaire principal ad hoc + framework
+        # FlutterMacOS signé Google → crash dyld arm64 "different Team IDs" + Gatekeeper
+        # « endommagée ». Ad hoc = non notarisé : l'utilisateur passe par clic droit → Ouvrir.
+        # (Notarisation Developer ID : voir notes/FlowLINE-macOS-signature-analyse.md.)
+        env:
+          APP: ./flutter/build/macos/Build/Products/Release/FlowLINE.app
+        run: |
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+
+      - name: create dmg (technicien)
         run: |
           CREATE_DMG="$(command -v create-dmg)"
           CREATE_DMG="$(readlink -f "$CREATE_DMG")"
@@ -161,7 +172,15 @@ jobs:
         run: |
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
 
-      - name: create unsigned dmg (Support)
+      - name: Codesign ad hoc (Support)
+        # Rebuild Support écrase le même chemin de sortie → re-signature obligatoire.
+        env:
+          APP: ./flutter/build/macos/Build/Products/Release/FlowLINE.app
+        run: |
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+
+      - name: create dmg (Support)
         run: |
           CREATE_DMG="$(command -v create-dmg)"
           CREATE_DMG="$(readlink -f "$CREATE_DMG")"
