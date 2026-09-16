@@ -259,6 +259,20 @@ async fn start_hbbs_sync_async() {
                                     SENDER.lock().unwrap().send(conns).ok();
                                 }
                         }
+                        // Fin d'assist support (0056) : le serveur envoie quit=true
+                        // après la grâce sans connexion ou sur « Terminer » du portail.
+                        // Gate quick-support : un client technicien ne peut jamais
+                        // être quitté par une réponse serveur.
+                        if let Some(quit) = rsp.remove("quit") {
+                            if quit.as_bool().unwrap_or(false) {
+                                log::info!("support session ended by server (quit)");
+                                #[cfg(all(
+                                    feature = "quick-support",
+                                    not(any(target_os = "android", target_os = "ios"))
+                                ))]
+                                crate::platform::quit_gui();
+                            }
+                        }
                         if let Some(rsp_modified_at) = rsp.remove("modified_at") {
                             if let Ok(rsp_modified_at) = serde_json::from_value::<i64>(rsp_modified_at) {
                                 if rsp_modified_at != modified_at {
