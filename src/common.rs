@@ -2229,7 +2229,26 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
     ThrottledInterval::new(i)
 }
 
+/// FlowLINE white-label (0054/0055) : force des options builtin de restriction
+/// UI (onglet Network, 2FA, Change ID) au démarrage. Compilé en dur via
+/// `FLOWLINE_RESTRICT_SETTINGS` (build.rs) → non modifiable côté client.
+/// Niveau assumé : masquage UI seul (pas de blocage effectif).
+pub fn apply_flowline_builtin_options() {
+    if !config::RESTRICT_SETTINGS {
+        return;
+    }
+    let mut settings = config::BUILTIN_SETTINGS.write().unwrap();
+    for key in [
+        config::keys::OPTION_HIDE_NETWORK_SETTINGS,
+        config::keys::OPTION_HIDE_2FA_SETTINGS,
+        config::keys::OPTION_DISABLE_CHANGE_ID,
+    ] {
+        settings.insert(key.to_owned(), "Y".to_owned());
+    }
+}
+
 pub fn load_custom_client() {
+    apply_flowline_builtin_options();
     #[cfg(debug_assertions)]
     if let Ok(data) = std::fs::read_to_string("./custom.txt") {
         read_custom_client(data.trim());
