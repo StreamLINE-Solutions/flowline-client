@@ -16,7 +16,7 @@ AppDir:
     id: flowline
     name: FlowLINE
     icon: flowline
-    version: 1.4.13
+    version: 1.4.14
     exec: usr/share/flowline/flowline
     exec_args: $@
   apt:
