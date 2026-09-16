@@ -853,6 +853,126 @@ pub fn hostname() -> String {
     return DEVICE_NAME.lock().unwrap().clone();
 }
 
+/// 0036 : (fabricant, modèle) matériels. `sysinfo` 0.29.10 n'expose ni
+/// `manufacturer()` ni `model()` (API inexistante sur tous les OS) → lecture
+/// plateforme par plateforme, sans dépendance supplémentaire.
+fn device_manufacturer_model() -> (String, String) {
+    #[allow(unused_mut)]
+    let mut out = (String::new(), String::new());
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::{enums::HKEY_LOCAL_MACHINE, RegKey};
+        let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+        // BIOS d'abord, puis SystemInformation (fallback Win10/11).
+        for subkey in [
+            "HARDWARE\\DESCRIPTION\\System\\BIOS",
+            "SYSTEM\\CurrentControlSet\\Control\\SystemInformation",
+        ] {
+            if let Ok(key) = hklm.open_subkey(subkey) {
+                let manufacturer: String =
+                    key.get_value("SystemManufacturer").unwrap_or_default();
+                let model: String = key.get_value("SystemProductName").unwrap_or_default();
+                if !manufacturer.is_empty() || !model.is_empty() {
+                    out = (manufacturer.trim().to_owned(), model.trim().to_owned());
+                    break;
+                }
+            }
+        }
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let read = |path: &str| {
+            std::fs::read_to_string(path)
+                .map(|s| s.trim().trim_end_matches('\0').trim().to_owned())
+                .unwrap_or_default()
+        };
+        let manufacturer = read("/sys/class/dmi/id/sys_vendor");
+        let mut model = read("/sys/class/dmi/id/product_name");
+        if model.is_empty() {
+            // ARM (Raspberry Pi & co) : pas de DMI, modèle via devicetree.
+            model = read("/sys/firmware/devicetree/base/model");
+        }
+        out = (manufacturer, model);
+    }
+    #[cfg(target_os = "macos")]
+    {
+        out = ("Apple Inc.".to_owned(), sysctl_string("hw.model"));
+    }
+    #[cfg(target_os = "ios")]
+    {
+        out = ("Apple Inc.".to_owned(), sysctl_string("hw.machine"));
+    }
+    #[cfg(target_os = "android")]
+    {
+        out = (
+            android_system_property("ro.product.manufacturer"),
+            android_system_property("ro.product.model"),
+        );
+    }
+    out
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn sysctl_string(name: &str) -> String {
+    use std::os::raw::{c_char, c_int, c_void};
+    extern "C" {
+        fn sysctlbyname(
+            name: *const c_char,
+            oldp: *mut c_void,
+            oldlenp: *mut usize,
+            newp: *mut c_void,
+            newlen: usize,
+        ) -> c_int;
+    }
+    let name = match std::ffi::CString::new(name) {
+        Ok(v) => v,
+        Err(_) => return String::new(),
+    };
+    let mut size: usize = 0;
+    unsafe {
+        if sysctlbyname(name.as_ptr(), std::ptr::null_mut(), &mut size, std::ptr::null_mut(), 0) != 0
+            || size == 0
+        {
+            return String::new();
+        }
+        let mut buf = vec![0u8; size];
+        if sysctlbyname(
+            name.as_ptr(),
+            buf.as_mut_ptr() as *mut c_void,
+            &mut size,
+            std::ptr::null_mut(),
+            0,
+        ) != 0
+        {
+            return String::new();
+        }
+        buf.truncate(size);
+        if let Some(pos) = buf.iter().position(|&b| b == 0) {
+            buf.truncate(pos);
+        }
+        String::from_utf8_lossy(&buf).trim().to_owned()
+    }
+}
+
+#[cfg(target_os = "android")]
+fn android_system_property(name: &str) -> String {
+    use std::os::raw::{c_char, c_int};
+    extern "C" {
+        fn __system_property_get(name: *const c_char, value: *mut c_char) -> c_int;
+    }
+    let name = match std::ffi::CString::new(name) {
+        Ok(v) => v,
+        Err(_) => return String::new(),
+    };
+    let mut buf = [0 as c_char; 92]; // PROP_VALUE_MAX (bionic)
+    let len = unsafe { __system_property_get(name.as_ptr(), buf.as_mut_ptr()) };
+    if len <= 0 {
+        return String::new();
+    }
+    let bytes = unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u8, len as usize) };
+    String::from_utf8_lossy(bytes).trim().to_owned()
+}
+
 #[inline]
 pub fn get_sysinfo() -> serde_json::Value {
     use hbb_common::sysinfo::System;
@@ -887,6 +1007,7 @@ pub fn get_sysinfo() -> serde_json::Value {
         }
     };
     let hostname = hostname(); // sys.hostname() return localhost on android in my test
+    let (manufacturer, model) = device_manufacturer_model();
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let out;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -898,8 +1019,8 @@ pub fn get_sysinfo() -> serde_json::Value {
         "os_version": os_version,
         "hostname": hostname,
         "arch": std::env::consts::ARCH,
-        "manufacturer": system.manufacturer(),
-        "model": system.model(),
+        "manufacturer": manufacturer,
+        "model": model,
     });
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
