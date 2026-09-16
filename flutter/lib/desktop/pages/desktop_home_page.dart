@@ -435,7 +435,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       final isToUpdate = (isWindows || isMacOS) && bind.mainIsInstalled();
       String btnText = isToUpdate ? 'Update' : 'Download';
       GestureTapCallback onPressed = () async {
-        final Uri url = Uri.parse('https://flowline.my-vth.ch/download.html');
+        // Module support (0057) : page /support = un seul gros bouton adapté à
+        // l'OS. Client technicien : page download.html classique.
+        final Uri url = Uri.parse(bind.isIncomingOnly()
+            ? 'https://flowline.my-vth.ch/support'
+            : 'https://flowline.my-vth.ch/download.html');
         await launchUrl(url);
       };
       if (isToUpdate) {
