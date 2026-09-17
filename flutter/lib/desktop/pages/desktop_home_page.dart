@@ -460,7 +460,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       return buildInstallCard("", systemError, "", () {});
     }
 
-    if (isWindows && !bind.isIncomingOnly() && !bind.isDisableInstallation()) {
+    // Carte « Installer » : visible aussi sur le module support (demande Lucas
+    // 2026-09-17) — l'installation évite les limitations UAC côté poste dépanné
+    // (annule le masquage ef2335f68).
+    if (isWindows && !bind.isDisableInstallation()) {
       if (!bind.mainIsInstalled()) {
         return buildInstallCard(
             "", bind.isOutgoingOnly() ? "" : "install_tip", "Install",
