@@ -3,9 +3,8 @@ name: Build FlowLINE Android (Support)
 on:
   # Build déclenché MANUELLEMENT (workflow_dispatch). Build self-hosted
   # (Pop!_OS 24.04 — même runner que Linux). Prérequis runner : Android SDK +
-  # NDK r25c+ + targets rust android + cargo-ndk, installés par le playbook
-  # flowline-runner-android-setup.yml (ANDROID_HOME / ANDROID_NDK_HOME via le
-  # .env du runner).
+  # NDK r25c+ + targets rust android + cargo-ndk ; ANDROID_HOME / ANDROID_NDK_HOME
+  # exportés via le .env du runner (playbook archivé flowline-runner-android-setup.yml).
   workflow_dispatch:
 
 env:
@@ -56,8 +55,14 @@ jobs:
       - name: Guard - Android SDK/NDK + cargo-ndk (installation auto si absent)
         shell: bash
         run: |
-          : "${ANDROID_HOME:?ANDROID_HOME absent — lancer le playbook flowline-runner-android-setup.yml}"
-          : "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME absent — lancer le playbook flowline-runner-android-setup.yml}"
+          : "${ANDROID_HOME:?ANDROID_HOME absent — vérifier le .env du runner (playbook flowline-runner-android-setup.yml)}"
+          : "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME absent — vérifier le .env du runner (playbook flowline-runner-android-setup.yml)}"
+          # Le runner peut perdre ~/.cargo/bin de son PATH (auto-update/restart du
+          # service, ex. 2.336 -> 2.337 le 17/09) : l'ajouter explicitement pour ce
+          # step et les suivants (les workflows Linux/Windows ne le voient que parce
+          # que dtolnay/rust-toolchain le rajoute plus tard — ce guard tourne avant).
+          export PATH="$HOME/.cargo/bin:$PATH"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           # Les runs CI réinstallent rustup (dtolnay/rust-toolchain) et font
           # disparaître cargo-ndk de ~/.cargo/bin → réinstallation auto idempotente.
           if ! command -v cargo-ndk >/dev/null; then
