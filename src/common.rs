@@ -1190,7 +1190,7 @@ pub fn get_api_server(api: String, custom: String) -> String {
     res
 }
 
-fn get_api_server_(api: String, custom: String) -> String {
+fn get_api_server_(api: String, _custom: String) -> String {
     #[cfg(windows)]
     if let Ok(lic) = crate::platform::windows::get_license_from_exe_name() {
         if !lic.api.is_empty() {
@@ -1200,32 +1200,10 @@ fn get_api_server_(api: String, custom: String) -> String {
     if !api.is_empty() {
         return api.to_owned();
     }
-    // FlowLINE white-label : URL API figée au build (https via NPM) si configurée.
-    // Prioritaire sur la dérivation http auto depuis le rendezvous.
-    if !config::API_SERVER.is_empty() {
-        return config::API_SERVER.to_owned();
-    }
-    let s0 = get_custom_rendezvous_server(custom);
-    if !s0.is_empty() {
-        let s = crate::increase_port(&s0, -2);
-        if s == s0 {
-            return format!("http://{}:{}", s, config::RENDEZVOUS_PORT - 2);
-        } else {
-            return format!("http://{}", s);
-        }
-    }
-    // FlowLINE white-label : dériver l'API depuis le rendezvous configuré (falcon)
-    // au lieu de retomber sur l'API publique RustDesk.
-    let rs = Config::get_rendezvous_server();
-    if !rs.is_empty() && !is_public(&rs) {
-        let s = crate::increase_port(&rs, -2);
-        if s == rs {
-            return format!("http://{}:{}", rs, RENDEZVOUS_PORT - 2);
-        } else {
-            return format!("http://{}", s);
-        }
-    }
-    "https://admin.rustdesk.com".to_owned()
+    // FlowLINE white-label (0051) : URL API figée au build, https obligatoire
+    // (build.rs refuse vide/http). Plus aucune dérivation `http://…:21114`
+    // depuis le rendezvous, plus de fallback admin.rustdesk.com.
+    config::API_SERVER.to_owned()
 }
 
 #[inline]
