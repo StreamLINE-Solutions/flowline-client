@@ -12,6 +12,11 @@ env:
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   VERSION: "1.4.14"
+  # versionCode Android (Play + Zapstore exigent un code strictement croissant).
+  # Le +N de pubspec.yaml est resté à +1 alors que 1/2/3 sont déjà publiés →
+  # erreur Play « Le code de version 1 a déjà été utilisé ». On prend le numéro
+  # de run GitHub : monotone (repo-wide) et jamais réutilisé.
+  BUILD_NUMBER: ${{ github.run_number }}
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   # FlowLINE white-label : serveurs de rendez-vous (séparés par virgule) + clé
   # publique. Déployer vers une autre infra = surcharger ces 2 vars (dispatch
@@ -173,14 +178,17 @@ jobs:
         working-directory: flutter
         run: |
           flutter precache --android
-          flutter build apk --release --target-platform android-arm64,android-arm
+          flutter build apk --release --build-number=${{ env.BUILD_NUMBER }} --target-platform android-arm64,android-arm
           cp build/app/outputs/flutter-apk/app-release.apk flowline-support-${{ env.VERSION }}.apk
+          # Trace du versionCode effectif (Play/Zapstore) dans les logs CI.
+          "$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)" dump badging \
+            build/app/outputs/flutter-apk/app-release.apk | grep -m1 "versionCode" || true
 
       - name: Build FlowLINE Support AAB (Play Store)
         shell: bash
         working-directory: flutter
         run: |
-          flutter build appbundle --release --target-platform android-arm64,android-arm
+          flutter build appbundle --release --build-number=${{ env.BUILD_NUMBER }} --target-platform android-arm64,android-arm
           cp build/app/outputs/bundle/release/app-release.aab flowline-support-${{ env.VERSION }}.aab
 
       - name: Upload FlowLINE Support APK
