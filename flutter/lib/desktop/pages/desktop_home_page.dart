@@ -460,10 +460,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       return buildInstallCard("", systemError, "", () {});
     }
 
-    // Carte « Installer » : visible aussi sur le module support (demande Lucas
-    // 2026-09-17) — l'installation évite les limitations UAC côté poste dépanné
-    // (annule le masquage ef2335f68).
-    if (isWindows && !bind.isDisableInstallation()) {
+    // Module support (incoming-only) : pas de carte « Installer » — un
+    // quick-support est temporaire et ne doit pas proposer d'installer le
+    // service (ef2335f68). La carte de mise à jour ci-dessus suffit : bouton
+    // « Download » → https://flowline.my-vth.ch/support (0057).
+    if (isWindows && !bind.isIncomingOnly() && !bind.isDisableInstallation()) {
       if (!bind.mainIsInstalled()) {
         return buildInstallCard(
             "", bind.isOutgoingOnly() ? "" : "install_tip", "Install",
