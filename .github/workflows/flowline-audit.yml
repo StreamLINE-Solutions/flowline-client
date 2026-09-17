@@ -1,0 +1,34 @@
+name: Audit dépendances FlowLINE
+
+on:
+  # Audit à la demande (pas de gate bloquant en push tant que l'arbre n'est pas
+  # à 0 HIGH — mitigations documentées dans le ticket 0049).
+  workflow_dispatch:
+
+env:
+  OSV_SCANNER_IMAGE: ghcr.io/google/osv-scanner:v2
+
+jobs:
+  audit:
+    name: osv-scanner (Cargo.lock + pubspec.lock)
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          submodules: false
+
+      # Report-only : liste les vulns restantes (dont celles sans fix compatible
+      # MSRV 1.75) sans faire échouer le job.
+      - name: Scan Cargo.lock (report-only)
+        continue-on-error: true
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src "$OSV_SCANNER_IMAGE" \
+            scan source --lockfile Cargo.lock --format table
+
+      # Gate actif : le lock Dart est propre (0 vuln au 2026-09-17).
+      - name: Scan pubspec.lock (Dart)
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src "$OSV_SCANNER_IMAGE" \
+            scan source --lockfile flutter/pubspec.lock --format table
