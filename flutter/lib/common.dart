@@ -2579,6 +2579,11 @@ connect(BuildContext context, String id,
     String? connToken,
     bool? isSharedPassword}) async {
   if (id == '') return;
+  // FlowLINE (0056) : pré-autorise la fenêtre support — best-effort, non
+  // bloquant. Si la cible est un module support sans compte, le serveur ouvre
+  // la fenêtre (télémétrie + session attribuée au tech + quit en fin d'assist) ;
+  // si la cible est un client normal (device lié à un compte), il ne fait rien.
+  unawaited(authorizeSupportWindow(id));
   if (!isDesktop || desktopType == DesktopType.main) {
     try {
       if (Get.isRegistered<IDTextEditingController>()) {
@@ -4255,4 +4260,30 @@ Widget? buildAvatarWidget({
       errorBuilder: (_, __, ___) => fallback ?? SizedBox.shrink(),
     ),
   );
+}
+
+/// 0056 : autorise la fenêtre support pour l'id ciblé (best-effort, non bloquant).
+///
+/// Appelé à chaque connexion sortante (`connect`) : si la cible est un module
+/// support sans compte, le serveur ouvre la fenêtre (heartbeats acceptés,
+/// session attribuée au tech, quit en fin d'assist). Si la cible est un client
+/// normal (device lié à un compte), le serveur ne crée rien.
+Future<void> authorizeSupportWindow(String id) async {
+  final target = id.replaceAll(RegExp(r'\s+'), '');
+  if (target.isEmpty) return;
+  final token = bind.mainGetLocalOption(key: 'access_token');
+  if (token == '') return;
+  try {
+    final url = await bind.mainGetApiServer();
+    await http.post(
+      Uri.parse('$url/api/support/authorize'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token'
+      },
+      body: json.encode({'id': target}),
+    );
+  } catch (e) {
+    debugPrint('authorizeSupportWindow failed: $e');
+  }
 }

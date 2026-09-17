@@ -347,6 +347,9 @@ class _ConnectionPageState extends State<ConnectionPage>
       bool isViewCamera = false,
       bool isTerminal = false}) {
     var id = _idController.id;
+    // FlowLINE : minimise le gestionnaire — le tech part en session. La fenêtre
+    // support est pré-autorisée dans connect() (best-effort, non bloquant).
+    unawaited(windowManager.minimize());
     connect(context, id,
         isFileTransfer: isFileTransfer,
         isViewCamera: isViewCamera,
