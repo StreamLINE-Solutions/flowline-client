@@ -1658,6 +1658,16 @@ impl Connection {
             return false;
         }
         self.authorized = true;
+        // FlowLINE (0056) : la session entrante vient d'être autorisée (clic du
+        // module support ou mot de passe valide) → notifier la fenêtre
+        // principale pour qu'elle se minimise (bureau libre pendant l'assist).
+        // Côté Flutter, le handler est limité au module support
+        // (isIncomingOnly) — le module technicien n'est pas concerné.
+        #[cfg(feature = "flutter")]
+        {
+            let data = serde_json::json!({"name": "flowline_support_session_started"}).to_string();
+            let _ = crate::flutter::push_global_event(crate::flutter::APP_TYPE_MAIN, data);
+        }
         let (conn_type, auth_conn_type) = if self.file_transfer.is_some() {
             (1, AuthConnType::FileTransfer)
         } else if self.port_forward_socket.is_some() {

@@ -580,6 +580,18 @@ _registerEventHandler() {
       });
     });
   }
+  // FlowLINE (0056) : la session entrante vient d'être autorisée → minimiser
+  // la fenêtre principale du module support (bureau libre pendant l'assist).
+  // Le module technicien (non incoming-only) n'est pas concerné.
+  if (isDesktop && desktopType == DesktopType.main) {
+    platformFFI.registerEventHandler(
+        'flowline_support_session_started', 'flowline_support_session_started',
+        (evt) async {
+      if (bind.isIncomingOnly()) {
+        await windowManager.minimize();
+      }
+    });
+  }
 }
 
 Widget keyListenerBuilder(BuildContext context, Widget? child) {
