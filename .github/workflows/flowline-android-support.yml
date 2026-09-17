@@ -52,29 +52,6 @@ jobs:
           git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
           echo "GIT_CONFIG_GLOBAL=$GITCFG" >> "$GITHUB_ENV"
 
-      - name: Guard - Android SDK/NDK + cargo-ndk (installation auto si absent)
-        shell: bash
-        run: |
-          : "${ANDROID_HOME:?ANDROID_HOME absent — vérifier le .env du runner (playbook flowline-runner-android-setup.yml)}"
-          : "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME absent — vérifier le .env du runner (playbook flowline-runner-android-setup.yml)}"
-          # Le runner peut perdre ~/.cargo/bin de son PATH (auto-update/restart du
-          # service, ex. 2.336 -> 2.337 le 17/09) : l'ajouter explicitement pour ce
-          # step et les suivants (les workflows Linux/Windows ne le voient que parce
-          # que dtolnay/rust-toolchain le rajoute plus tard — ce guard tourne avant).
-          export PATH="$HOME/.cargo/bin:$PATH"
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-          # Les runs CI réinstallent rustup (dtolnay/rust-toolchain) et font
-          # disparaître cargo-ndk de ~/.cargo/bin → réinstallation auto idempotente.
-          if ! command -v cargo-ndk >/dev/null; then
-            echo "cargo-ndk absent — installation (cargo install cargo-ndk 3.5.4)"
-            cargo install cargo-ndk --locked --version 3.5.4
-          fi
-          echo "SDK: $ANDROID_HOME"
-          echo "NDK: $ANDROID_NDK_HOME"
-          cargo ndk --version
-          # NDK r25+ : pas de binaire ndk-version (source.properties à la place).
-          grep 'Pkg.ReleaseName' "$ANDROID_NDK_HOME/source.properties"
-
       - name: Install flutter
         uses: subosito/flutter-action@2783a3f08e1baf891508463f8c6653c258246225 # v2.12.0
         with:
@@ -103,6 +80,27 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
           targets: aarch64-linux-android,armv7-linux-androideabi
           components: "rustfmt"
+
+      # APRÈS dtolnay/rust-toolchain (et pas avant) : ce guard a besoin de cargo, or
+      # le runner peut perdre rustup/cargo (incident 17/09/2026 : binaire rustup
+      # disparu de ~/.cargo/bin → symlinks cassés, `cargo: command not found`).
+      # dtolnay réinstalle rustup si absent et met cargo au PATH → guard auto-réparant.
+      - name: Guard - Android SDK/NDK + cargo-ndk (installation auto si absent)
+        shell: bash
+        run: |
+          : "${ANDROID_HOME:?ANDROID_HOME absent — vérifier le .env du runner (playbook flowline-runner-android-setup.yml)}"
+          : "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME absent — vérifier le .env du runner (playbook flowline-runner-android-setup.yml)}"
+          # Les runs CI réinstallent rustup (dtolnay/rust-toolchain) et font
+          # disparaître cargo-ndk de ~/.cargo/bin → réinstallation auto idempotente.
+          if ! command -v cargo-ndk >/dev/null; then
+            echo "cargo-ndk absent — installation (cargo install cargo-ndk 3.5.4)"
+            cargo install cargo-ndk --locked --version 3.5.4
+          fi
+          echo "SDK: $ANDROID_HOME"
+          echo "NDK: $ANDROID_NDK_HOME"
+          cargo ndk --version
+          # NDK r25+ : pas de binaire ndk-version (source.properties à la place).
+          grep 'Pkg.ReleaseName' "$ANDROID_NDK_HOME/source.properties"
 
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
