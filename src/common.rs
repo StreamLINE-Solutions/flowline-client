@@ -1474,18 +1474,20 @@ async fn post_request_http(url: &str, body: &str, header: &str) -> ResultType<(u
 
 /// Try `http_fn` first; on connection failure or 5xx, fall back to `tcp_fn`
 /// if the URL is eligible. 4xx responses are returned as-is.
+/// Retourne `(status, body)` ; le transport TCP brut n'a pas de statut HTTP
+/// (200 conventionnel).
 async fn with_tcp_proxy_fallback<HttpFut, TcpFut>(
     url: &str,
     method: &str,
     http_fn: HttpFut,
     tcp_fn: TcpFut,
-) -> ResultType<String>
+) -> ResultType<(u16, String)>
 where
     HttpFut: Future<Output = ResultType<(u16, String)>>,
     TcpFut: Future<Output = ResultType<String>>,
 {
     if should_use_raw_tcp_for_api(url) {
-        return tcp_fn.await;
+        return tcp_fn.await.map(|text| (200, text));
     }
 
     let http_result = http_fn.await;
@@ -1505,14 +1507,14 @@ where
                 .map_err(|e| e.to_string()),
         );
         match tcp_fn.await {
-            Ok(resp) => return Ok(resp),
+            Ok(resp) => return Ok((200, resp)),
             Err(tcp_err) => {
                 log::warn!("TCP proxy fallback also failed: {:?}", tcp_err);
             }
         }
     }
 
-    http_result.map(|(_status, text)| text)
+    http_result
 }
 
 /// POST request with raw TCP proxy support.
@@ -1522,6 +1524,19 @@ where
 /// - 4xx responses are returned as-is (server is reachable, business logic error).
 /// - If fallback also fails, returns the original HTTP result (text or error).
 pub async fn post_request(url: String, body: String, header: &str) -> ResultType<String> {
+    post_request_status(url, body, header)
+        .await
+        .map(|(_status, text)| text)
+}
+
+/// Variante de `post_request` exposant le statut HTTP. Utilisée par l'upload
+/// sysinfo (0062) pour distinguer un refus d'autorisation (401/403, fenêtre
+/// support 0056 pas encore ouverte) d'une erreur réseau/5xx.
+pub async fn post_request_status(
+    url: String,
+    body: String,
+    header: &str,
+) -> ResultType<(u16, String)> {
     with_tcp_proxy_fallback(
         &url,
         "POST",
@@ -1784,6 +1799,7 @@ pub async fn http_request_sync(
         http_request_via_tcp_proxy(&url, &method, body.as_deref(), &header),
     )
     .await
+    .map(|(_status, text)| text)
 }
 
 /// General HTTP request via TCP proxy. Header is a JSON string (used by http_request_sync).

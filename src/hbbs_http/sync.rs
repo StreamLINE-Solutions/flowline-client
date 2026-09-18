@@ -16,6 +16,9 @@ use serde_json::{json, Value};
 
 const TIME_HEARTBEAT: Duration = Duration::from_secs(15);
 const UPLOAD_SYSINFO_TIMEOUT: Duration = Duration::from_secs(120);
+/// 0062 : après un refus d'autorisation (401/403, fenêtre support 0056 pas
+/// encore ouverte), retry court au lieu du backoff long.
+const SYSINFO_RETRY_AFTER_REJECT: Duration = Duration::from_secs(12);
 const TIME_CONN: Duration = Duration::from_secs(3);
 
 #[cfg(not(any(target_os = "ios")))]
@@ -55,6 +58,8 @@ struct InfoUploaded {
     last_uploaded: Option<Instant>,
     id: String,
     username: Option<String>,
+    /// Dernier upload rejeté par autorisation (401/403) → retry court (0062).
+    rejected: bool,
 }
 
 impl Default for InfoUploaded {
@@ -65,6 +70,7 @@ impl Default for InfoUploaded {
             last_uploaded: None,
             id: "".to_owned(),
             username: None,
+            rejected: false,
         }
     }
 }
@@ -77,6 +83,7 @@ impl InfoUploaded {
             last_uploaded: None,
             id,
             username: Some(username),
+            rejected: false,
         }
     }
 }
@@ -126,8 +133,16 @@ async fn start_hbbs_sync_async() {
                 let sys_username = v["username"].as_str().unwrap_or_default().to_string();
                 // Though the username comparison is only necessary on Windows,
                 // we still keep the comparison on other platforms for consistency.
+                let sysinfo_timeout = if info_uploaded.rejected {
+                    SYSINFO_RETRY_AFTER_REJECT
+                } else {
+                    UPLOAD_SYSINFO_TIMEOUT
+                };
+                // 0062 : pendant une connexion entrante active, tenter l'upload sans
+                // attendre le backoff (le sysinfo doit partir pendant la session support).
                 let need_upload = (!info_uploaded.uploaded || info_uploaded.username.as_ref() != Some(&sys_username)) &&
-                    info_uploaded.last_uploaded.map(|x| x.elapsed() >= UPLOAD_SYSINFO_TIMEOUT).unwrap_or(true);
+                    (info_uploaded.last_uploaded.map(|x| x.elapsed() >= sysinfo_timeout).unwrap_or(true) ||
+                        !conns.is_empty());
                 if need_upload {
                     v["version"] = json!(crate::VERSION);
                     v["id"] = json!(id);
@@ -207,8 +222,8 @@ async fn start_hbbs_sync_async() {
                             }
                         }
                     }
-                    match crate::post_request(url.replace("heartbeat", "sysinfo"), v, &auth_header()).await {
-                        Ok(x)  => {
+                    match crate::post_request_status(url.replace("heartbeat", "sysinfo"), v, &auth_header()).await {
+                        Ok((status, x))  => {
                             if x == "SYSINFO_UPDATED" {
                                 info_uploaded = InfoUploaded::uploaded(url.clone(), id.clone(), sys_username);
                                 log::info!("sysinfo updated");
@@ -219,11 +234,20 @@ async fn start_hbbs_sync_async() {
                                 *PRO.lock().unwrap() = true;
                             } else if x == "ID_NOT_FOUND" {
                                 info_uploaded.last_uploaded = None; // next heartbeat will upload sysinfo again
+                            } else if status == 401 || status == 403 {
+                                // 0062 : fenêtre support (0056) pas encore ouverte → temporaire.
+                                if !info_uploaded.rejected {
+                                    log::info!("sysinfo rejected ({}), short retry", status);
+                                }
+                                info_uploaded.rejected = true;
+                                info_uploaded.last_uploaded = Some(Instant::now());
                             } else {
+                                info_uploaded.rejected = false;
                                 info_uploaded.last_uploaded = Some(Instant::now());
                             }
                         }
                         _ => {
+                            info_uploaded.rejected = false;
                             info_uploaded.last_uploaded = Some(Instant::now());
                         }
                     }
