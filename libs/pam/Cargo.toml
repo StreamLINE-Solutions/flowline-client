@@ -1,0 +1,36 @@
+# Vendored from https://github.com/rustdesk-org/pam @ 7bfd2551 (fork of 1wilkens/pam,
+# itself based on https://github.com/1wilkens/pam). Kept in-tree because upstream is
+# unmaintained and RustDesk's fork is the only one exposing `Client::set_item()`.
+# FlowLINE patches:
+#   - `users` (abandoned, RUSTSEC-2025-0040) -> `uzers`
+#   - `pam-sys` pinned to crates.io 1.0.0-alpha5 (includes the __gnuc_va_list fix that
+#     RustDesk carried on a fork branch)
+#   - upstream [workspace] table removed (pam-macros comes from crates.io)
+
+[package]
+
+name = "pam"
+version = "0.7.0"
+authors = ["Florian Wilkens <gh@1wilkens.org>"]
+description = "Safe Rust wrappers for PAM authentication"
+license = "MIT OR Apache-2.0"
+categories = ["authentication"]
+
+repository = "https://github.com/1wilkens/pam/"
+documentation = "https://docs.rs/pam/"
+readme = "README.md"
+
+edition = "2018"
+
+[features]
+default = ["client"]
+
+functions = []
+client = ["uzers"]
+module = []
+
+[dependencies]
+pam-macros = "=0.0.3"
+libc    = "^0.2"
+pam-sys = "1.0.0-alpha5"
+uzers   = { version = "^0.12", optional = true }

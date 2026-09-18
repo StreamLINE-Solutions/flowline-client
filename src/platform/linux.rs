@@ -10,7 +10,7 @@ use hbb_common::{
     log,
     message_proto::{DisplayInfo, Resolution},
     regex::{Captures, Regex},
-    users::{get_user_by_name, os::unix::UserExt},
+    uzers::{get_user_by_name, os::unix::UserExt},
 };
 use libxdo_sys::{self, xdo_t, Window};
 use std::{

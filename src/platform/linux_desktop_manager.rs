@@ -8,7 +8,7 @@ use hbb_common::{
     allow_err, bail, log,
     rand::prelude::*,
     tokio::time,
-    users::{get_user_by_name, os::unix::UserExt, User},
+    uzers::{get_user_by_name, os::unix::UserExt, User},
 };
 use pam;
 use std::{
