@@ -92,6 +92,36 @@ jobs:
           "Exclusions Defender actives :"
           Get-MpPreference | Select-Object -ExpandProperty ExclusionPath
 
+      - name: Nettoyage des artefacts du run précédent
+        # clean: false → le workspace persiste. On retire les sorties non
+        # rejouables (mv/Expand-Archive échouent si la cible existe) avant de
+        # rebuilder ; target/ et flutter/build/ restent pour l'incrémental.
+        run: |
+          $items = @(
+            'windows-x64-release.zip',
+            'windows-x64-release',
+            'rustdesk',
+            'rustdesk-support',
+            "flowline-${{ env.VERSION }}-x86_64.msi",
+            "flowline-support-${{ env.VERSION }}-onefile.exe"
+          )
+          foreach ($i in $items) {
+            if (Test-Path $i) { Remove-Item -Recurse -Force $i }
+          }
+
+      - name: Runner — démarrage auto au boot (tâche planifiée, idempotent)
+        # Le package runner 2.337 n'a plus svc.cmd. Tâche ONLOGON (autologon
+        # actif) exécutée avec le token complet de User (/RL HIGHEST) via un
+        # VBS qui cache la fenêtre. /IT = pas de mot de passe stocké.
+        run: |
+          $vbs = @(
+            'Set sh = CreateObject("WScript.Shell")',
+            'sh.Run "cmd /c C:\actions-runner\run.cmd", 0, False'
+          )
+          Set-Content -Path C:\actions-runner\run-hidden.vbs -Value $vbs -Encoding ASCII
+          schtasks /Create /TN "GitHubRunner" /TR "wscript.exe C:\actions-runner\run-hidden.vbs" /SC ONLOGON /RU "$env:COMPUTERNAME\$env:USERNAME" /IT /RL HIGHEST /F
+          schtasks /Query /TN "GitHubRunner" /FO LIST | Select-String -Pattern 'Nom de la tâche|TaskName|Statut|Status'
+
       - name: Configure git credentials (deps git privées, pubspec rustdesk-org/*)
         # Sur GH hosted un credential helper global existe ; pas sur self-hosted.
         # GIT_CONFIG_GLOBAL = config job-only (ne touche pas au ~/.gitconfig).
