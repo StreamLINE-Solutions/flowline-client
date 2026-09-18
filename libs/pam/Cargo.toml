@@ -32,5 +32,5 @@ module = []
 [dependencies]
 pam-macros = "=0.0.3"
 libc    = "^0.2"
-pam-sys = "1.0.0-alpha5"
+pam-sys = { git = "https://github.com/rustdesk-org/pam-sys", branch = "fix/v1.0.0-alpha4_gnuc_va_list" }
 uzers   = { version = "^0.12", optional = true }
