@@ -20,7 +20,7 @@ jobs:
           submodules: false
 
       # Report-only : liste les vulns restantes (dont celles sans fix compatible
-      # MSRV 1.75) sans faire échouer le job.
+      # MSRV 1.88) sans faire échouer le job.
       - name: Scan Cargo.lock (report-only)
         continue-on-error: true
         run: |

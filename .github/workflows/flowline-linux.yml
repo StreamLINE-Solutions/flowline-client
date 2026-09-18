@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  RUST_VERSION: "1.75"
+  RUST_VERSION: "1.88"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   VERSION: "1.4.14"
@@ -130,6 +130,9 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           prefix-key: linux-x64
+          # cache-bin: rust-cache nettoie ~/.cargo/bin au post-job et supprime
+          # rustup/cargo-ndk installés pendant le run (cassait cargo en local).
+          cache-bin: false
 
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11

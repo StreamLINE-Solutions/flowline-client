@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  RUST_VERSION: "1.75"
+  RUST_VERSION: "1.88"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   VERSION: "1.4.14"
@@ -95,8 +95,9 @@ jobs:
         run: |
           : "${ANDROID_HOME:?ANDROID_HOME absent — vérifier le .env du runner (playbook flowline-runner-android-setup.yml)}"
           : "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME absent — vérifier le .env du runner (playbook flowline-runner-android-setup.yml)}"
-          # Les runs CI réinstallent rustup (dtolnay/rust-toolchain) et font
-          # disparaître cargo-ndk de ~/.cargo/bin → réinstallation auto idempotente.
+          # rust-cache (cache-bin: false ci-dessous) ne supprime plus les binaires
+          # installés pendant le run ; ce guard reste idempotent pour les cas où
+          # cargo-ndk manque malgré tout (cache froid, nettoyage manuel).
           if ! command -v cargo-ndk >/dev/null; then
             echo "cargo-ndk absent — installation (cargo install cargo-ndk 3.5.4)"
             cargo install cargo-ndk --locked --version 3.5.4
@@ -110,6 +111,9 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           prefix-key: linux-x64
+          # cache-bin: rust-cache nettoie ~/.cargo/bin au post-job et supprime
+          # rustup/cargo-ndk installés pendant le run (cassait cargo en local).
+          cache-bin: false
 
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11

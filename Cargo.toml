@@ -6,7 +6,7 @@ edition = "2021"
 build= "build.rs"
 description = "FlowLINE Remote Desktop (white-label RustDesk 1.4.14)"
 default-run = "rustdesk"
-rust-version = "1.75"
+rust-version = "1.88"
 
 [lib]
 name = "librustdesk"
