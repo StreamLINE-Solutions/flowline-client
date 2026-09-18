@@ -71,6 +71,27 @@ jobs:
             throw "Git bin not found - install via winget install --id Git.Git"
           }
 
+      - name: Defender exclusions (idempotent, accélère les builds)
+        # Le service runner a un token complet (pas de filtrage UAC), contrairement
+        # à WinRM. Réduit fortement l'overhead I/O de Defender sur cargo/vcpkg/git.
+        run: |
+          $paths = @(
+            'C:\actions-runner',
+            'C:\Users\User\.cargo',
+            'C:\Users\User\.rustup',
+            'C:\Users\User\.nuget',
+            'C:\Users\User\AppData\Local\Temp',
+            'C:\Program Files\LLVM'
+          )
+          foreach ($p in $paths) { Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue }
+          $procs = @(
+            'rustc.exe','cargo.exe','cl.exe','link.exe','cmake.exe','ninja.exe',
+            'vcpkg.exe','dart.exe','gen_snapshot.exe','git.exe','bash.exe','sh.exe'
+          )
+          foreach ($p in $procs) { Add-MpPreference -ExclusionProcess $p -ErrorAction SilentlyContinue }
+          "Exclusions Defender actives :"
+          Get-MpPreference | Select-Object -ExpandProperty ExclusionPath
+
       - name: Configure git credentials (deps git privées, pubspec rustdesk-org/*)
         # Sur GH hosted un credential helper global existe ; pas sur self-hosted.
         # GIT_CONFIG_GLOBAL = config job-only (ne touche pas au ~/.gitconfig).
