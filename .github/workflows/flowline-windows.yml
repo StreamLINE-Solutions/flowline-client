@@ -20,7 +20,6 @@ env:
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   VERSION: "1.4.14"
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   # FlowLINE white-label : serveurs de rendez-vous (séparés par virgule) + clé
   # publique. Déployer vers une autre infra = surcharger ces 2 vars (dispatch
   # manuel, champ "env" du job). Valeurs par défaut = infra falcon.
@@ -40,17 +39,14 @@ jobs:
     # profite du cache. Le bridge (flutter_rust_bridge) est commité.
     runs-on: [self-hosted, Windows, X64]
     steps:
-      - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
       - name: Checkout source code
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           submodules: recursive
+          # Runner self-hosted persistant : NE PAS nettoyer le workspace, sinon
+          # target/ (et build/ Flutter) sont effacés à chaque run → plus de
+          # builds incrémentaux et il faudrait rust-cache (post-job ~8 min).
+          clean: false
           # Repos privés (flowline-hbb-common...) : GITHUB_TOKEN du job ne voit
           # que le repo courant → PAT org (secret FLOWLINE_GH_TOKEN) pour les submodules.
           token: ${{ secrets.FLOWLINE_GH_TOKEN }}
@@ -150,19 +146,20 @@ jobs:
           targets: x86_64-pc-windows-msvc
           components: "rustfmt"
 
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-        with:
-          prefix-key: windows-2022
-          # cache-bin: rust-cache nettoie ~/.cargo/bin au post-job et supprime
-          # rustup/cargo-ndk installés pendant le run (cassait cargo en local).
-          cache-bin: false
-
-      - name: Setup vcpkg with Github Actions binary cache
-        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11
-        with:
-          vcpkgDirectory: ${{ runner.tool_cache }}\vcpkg
-          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-          doNotCache: false
+      - name: Setup vcpkg (tool cache persistant, sans mise à jour)
+        # Remplace lukka/run-vcpkg : l'action refaisait un fetch/checkout du
+        # commit pinné + bootstrap (15 min silencieuses sous Defender) et son
+        # backend de cache x-gha n'existe plus. Le tool cache du runner
+        # persiste déjà vcpkg.exe + installed/ (packages précompilés).
+        run: |
+          $vcpkgRoot = Join-Path $env:RUNNER_TOOL_CACHE "vcpkg"
+          if (-not (Test-Path (Join-Path $vcpkgRoot "vcpkg.exe"))) {
+            throw "vcpkg.exe absent du tool cache ($vcpkgRoot)"
+          }
+          Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_ROOT=$vcpkgRoot"
+          Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_DEFAULT_TRIPLET=x64-windows-static"
+          Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_DEFAULT_HOST_TRIPLET=x64-windows-static"
+          & (Join-Path $vcpkgRoot "vcpkg.exe") version
 
       - name: Install vcpkg dependencies
         env:
