@@ -202,6 +202,10 @@ pub async fn create_tcp_connection(
 ) -> ResultType<()> {
     let mut stream = stream;
     let id = server.write().unwrap().get_new_id();
+    // #16254 : borne la trame pré-auth à 128 Kio (clé publique, login, test delay,
+    // close reason) — la lecture du handshake d'identité est bornée aussi ; le cap
+    // est levé à l'autorisation (connection.rs).
+    stream.set_max_packet_length(MAX_UNAUTHORIZED_MESSAGE);
     let (sk, pk) = Config::get_key_pair();
     if secure && pk.len() == sign::PUBLICKEYBYTES && sk.len() == sign::SECRETKEYBYTES {
         let mut sk_ = [0u8; sign::SECRETKEYBYTES];

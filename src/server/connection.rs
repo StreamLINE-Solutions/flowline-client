@@ -73,6 +73,12 @@ use windows::Win32::Foundation::{CloseHandle, HANDLE};
 use crate::virtual_display_manager;
 pub type Sender = mpsc::UnboundedSender<(Instant, Arc<Message>)>;
 
+/// #16254 : la plus grosse trame qu'une connexion peut envoyer avant autorisation.
+/// 128 Kio couvre clé publique, login, test delay et close reason (le login ne
+/// référence l'avatar que par URL) ; taille du buffer de lecture WebSocket, donc
+/// sans coût supplémentaire sur ce transport. Levé à l'autorisation.
+pub const MAX_UNAUTHORIZED_MESSAGE: usize = 128 * 1024;
+
 lazy_static::lazy_static! {
     static ref LOGIN_FAILURES: [Arc::<Mutex<HashMap<String, (i32, i32, i32)>>>; 2] = Default::default();
     static ref SESSIONS: Arc::<Mutex<HashMap<SessionKey, Session>>> = Default::default();
@@ -1659,6 +1665,9 @@ impl Connection {
         if let Some(keep_alive) = self.prepare_terminal_login_for_authorization().await {
             return keep_alive;
         }
+        // #16254 : cap pré-auth levé ici, avant connect_port_forward_if_needed —
+        // un tunnel multiplexé rétrécit à nouveau pour son propre framing.
+        self.stream.set_max_packet_length(usize::MAX);
         if !self.connect_port_forward_if_needed().await {
             return false;
         }
