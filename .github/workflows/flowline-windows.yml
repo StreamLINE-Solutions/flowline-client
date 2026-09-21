@@ -19,7 +19,7 @@ env:
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
-  VERSION: "1.4.14"
+  VERSION: "1.4.15"
   # FlowLINE white-label : serveurs de rendez-vous (séparés par virgule) + clé
   # publique. Déployer vers une autre infra = surcharger ces 2 vars (dispatch
   # manuel, champ "env" du job). Valeurs par défaut = infra falcon.

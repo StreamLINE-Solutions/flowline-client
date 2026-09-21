@@ -11,7 +11,7 @@ env:
   RUST_VERSION: "1.88"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
-  VERSION: "1.4.14"
+  VERSION: "1.4.15"
   # versionCode Android (Play + Zapstore exigent un code strictement croissant).
   # Le +N de pubspec.yaml est resté à +1 alors que 1/2/3 sont déjà publiés →
   # erreur Play « Le code de version 1 a déjà été utilisé ». On prend le numéro
