@@ -125,6 +125,13 @@ android {
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules'
+            ndk {
+                // Symboles natifs (librustdesk.so) embarqués dans
+                // BUNDLE-METADATA de l'AAB → supprime l'avertissement Play
+                // « code natif sans symboles de débogage ». AGP strippe les
+                // .so packagés (taille utilisateur inchangée).
+                debugSymbolLevel 'SYMBOL_TABLE'
+            }
         }
     }
 }

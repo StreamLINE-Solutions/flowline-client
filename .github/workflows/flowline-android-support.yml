@@ -132,6 +132,13 @@ jobs:
         # La variante Support force l'UI réduite incoming-only (feature cargo
         # `quick-support`, cross-platform). Les .so sont copiés dans jniLibs.
         shell: bash
+        env:
+          # Symboles natifs conservés dans les .so : AGP les extrait vers
+          # BUNDLE-METADATA de l'AAB (debugSymbolLevel=SYMBOL_TABLE, exigé par
+          # Play) puis strippe les .so packagés. Le [profile.release] strip=true
+          # les supprimerait au link → avertissement Play « code natif sans
+          # symboles de débogage ».
+          CARGO_PROFILE_RELEASE_STRIP: "false"
         run: |
           # bindgen (magnum-opus, scrap, kcp-sys…) : sans target versionné + sysroot NDK,
           # il parse avec le clang hôte → stdint.h hôte incompatible (bits/libc-header-start).
@@ -146,13 +153,20 @@ jobs:
           mv flutter/android/app/src/main/jniLibs/armeabi-v7a/liblibrustdesk.so flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
           ls -la flutter/android/app/src/main/jniLibs/arm64-v8a/ flutter/android/app/src/main/jniLibs/armeabi-v7a/
 
-      - name: Strip native libs (taille APK)
+      - name: Vérifier les symboles natifs (.symtab requis par Play)
+        # Ne PAS stripper ici : AGP (debugSymbolLevel) extrait les symboles vers
+        # BUNDLE-METADATA puis strippe les .so packagés (taille utilisateur
+        # inchangée). Un strip ici ferait réapparaître l'avertissement Play.
         shell: bash
         run: |
-          $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip \
-            flutter/android/app/src/main/jniLibs/arm64-v8a/*.so
-          $ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip \
-            flutter/android/app/src/main/jniLibs/armeabi-v7a/*.so
+          READELF="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+          for abi in arm64-v8a armeabi-v7a; do
+            if "$READELF" -S "flutter/android/app/src/main/jniLibs/$abi/librustdesk.so" | grep -q '\.symtab'; then
+              echo "$abi: .symtab présent"
+            else
+              echo "$abi: .symtab ABSENT — symboles Play manquants"; exit 1
+            fi
+          done
 
       - name: Setup release signing (keystore local)
         # Keystore de PRODUCTION : ~/flowline-key.properties (hors repo) sur le runner
