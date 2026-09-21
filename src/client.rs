@@ -1224,7 +1224,7 @@ impl Default for AudioBuffer {
 impl AudioBuffer {
     pub fn resize(&mut self, sample_rate: usize, channels: usize) {
         let capacity = sample_rate * channels * AUDIO_BUFFER_MS / 1000;
-        let old_capacity = self.0.lock().unwrap().capacity();
+        let old_capacity = self.0.lock().unwrap().capacity().get();
         if capacity != old_capacity {
             *self.0.lock().unwrap() = ringbuf::HeapRb::<f32>::new(capacity);
             self.1 = sample_rate * channels;
@@ -1285,7 +1285,7 @@ impl AudioBuffer {
         }
 
         let mut lock = self.0.lock().unwrap();
-        let cap = lock.capacity();
+        let cap = lock.capacity().get();
         let having = lock.occupied_len();
         let skip = (cap * max / (30 * N) + 1) & (!1);
         if (having > skip * 3) && (skip > 0) {
@@ -1299,7 +1299,7 @@ impl AudioBuffer {
     /// will be kept.
     fn append_pcm2(&self, buffer: &[f32]) -> usize {
         let mut lock = self.0.lock().unwrap();
-        let cap = lock.capacity();
+        let cap = lock.capacity().get();
         if buffer.len() > cap {
             lock.push_slice_overwrite(buffer);
             return cap;
