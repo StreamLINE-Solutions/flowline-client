@@ -1,8 +1,8 @@
 [package]
 name = "rustdesk-portable-packer"
-version = "1.4.15"
+version = "1.4.16"
 edition = "2021"
-description = "FlowLINE Remote Desktop (white-label RustDesk 1.4.15)"
+description = "FlowLINE Remote Desktop (white-label RustDesk 1.4.16)"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
