@@ -60,3 +60,19 @@ libsciter.dylib
 flutter/web/
 # Build Android : libs natives générées par cargo ndk
 flutter/android/app/src/main/jniLibs/
+
+# === Secrets / matériel sensible (audit 2026-09-21) ===
+.env*
+secrets/
+99-sensitive/
+*.key
+*.pem
+*.p12
+*.pfx
+*.kdbx
+id_rsa*
+id_ed25519*
+id_ecdsa*
+*.sql
+*.dump
+node_modules/
