@@ -163,11 +163,13 @@ jobs:
         run: |
           READELF="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
           for abi in arm64-v8a armeabi-v7a; do
-            if "$READELF" -S "flutter/android/app/src/main/jniLibs/$abi/librustdesk.so" | grep -q '\.symtab'; then
-              echo "$abi: .symtab présent"
-            else
-              echo "$abi: .symtab ABSENT — symboles Play manquants"; exit 1
-            fi
+            # Pas de pipe vers grep -q : grep quitte au 1er match → SIGPIPE sur
+            # llvm-readelf + pipefail = faux « ABSENT » (run 24, armv7).
+            sections="$("$READELF" -S "flutter/android/app/src/main/jniLibs/$abi/librustdesk.so" 2>/dev/null)" || true
+            case "$sections" in
+              *".symtab"*) echo "$abi: .symtab présent" ;;
+              *) echo "$abi: .symtab ABSENT — symboles Play manquants"; exit 1 ;;
+            esac
           done
 
       - name: Setup release signing (keystore local)
