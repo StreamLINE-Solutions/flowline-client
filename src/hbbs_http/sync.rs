@@ -27,6 +27,22 @@ lazy_static::lazy_static! {
     static ref PRO: Arc<Mutex<bool>> = Default::default();
 }
 
+/// Preuve mutuelle d'attribution (audit N-02c, V2) : ids des pairs que ce poste
+/// contrôle activement (sessions sortantes). Alimenté par le CM
+/// (`flutter::sessions`) en direct quand le heartbeat est dans le même process
+/// (Android, portable), sinon via IPC `Data::ControlledPeers` (Windows service :
+/// le heartbeat tourne dans `--server`). Le serveur recoupe ce registre avec les
+/// `peers` déclarés par la cible avant d'attribuer une session.
+static CONTROLLED_PEERS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+pub fn set_controlled_peers(peers: Vec<String>) {
+    *CONTROLLED_PEERS.lock().unwrap() = peers;
+}
+
+fn controlled_peers() -> Vec<String> {
+    CONTROLLED_PEERS.lock().unwrap().clone()
+}
+
 #[cfg(not(any(target_os = "ios")))]
 pub fn start() {
     let _sender = SENDER.lock().unwrap();
@@ -260,6 +276,9 @@ async fn start_hbbs_sync_async() {
                 v["id"] = json!(id);
                 v["uuid"] = json!(crate::encode64(hbb_common::get_uuid()));
                 v["ver"] = json!(hbb_common::get_version_number(crate::VERSION));
+                // Preuve mutuelle (N-02c) : déclaration systématique, même vide —
+                // c'est la présence du champ qui marque le client comme capable.
+                v["controlled_peers"] = json!(controlled_peers());
                 if !conns.is_empty() {
                     v["conns"] = json!(conns);
                     // Connexions entrantes (ce device est la cible contrôlée) :

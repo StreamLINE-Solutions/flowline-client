@@ -467,6 +467,13 @@ pub enum Data {
         not(any(target_os = "android", target_os = "ios"))
     ))]
     ControllingSessionCount(usize),
+    /// Preuve mutuelle d'attribution (audit N-02c, V2) : ids des pairs contrôlés
+    /// par ce poste, poussés du process UI vers `--server` (heartbeat).
+    #[cfg(all(
+        feature = "flutter",
+        not(any(target_os = "android", target_os = "ios"))
+    ))]
+    ControlledPeers(Vec<String>),
     #[cfg(target_os = "linux")]
     TerminalSessionCount(usize),
     #[cfg(target_os = "windows")]
@@ -1006,6 +1013,13 @@ async fn handle(data: Data, stream: &mut Connection) {
         ))]
         Data::ControllingSessionCount(count) => {
             crate::updater::update_controlling_session_count(count);
+        }
+        #[cfg(all(
+            feature = "flutter",
+            not(any(target_os = "android", target_os = "ios"))
+        ))]
+        Data::ControlledPeers(peers) => {
+            crate::hbbs_http::sync::set_controlled_peers(peers);
         }
         #[cfg(target_os = "linux")]
         Data::TerminalSessionCount(_) => {
@@ -2009,6 +2023,17 @@ pub async fn clear_wayland_screencast_restore_token(key: String) -> ResultType<b
 pub async fn update_controlling_session_count(count: usize) -> ResultType<()> {
     let mut c = connect(1000, "").await?;
     c.send(&Data::ControllingSessionCount(count)).await?;
+    Ok(())
+}
+
+#[cfg(all(
+    feature = "flutter",
+    not(any(target_os = "android", target_os = "ios"))
+))]
+#[tokio::main(flavor = "current_thread")]
+pub async fn update_controlled_peers(peers: Vec<String>) -> ResultType<()> {
+    let mut c = connect(1000, "").await?;
+    c.send(&Data::ControlledPeers(peers)).await?;
     Ok(())
 }
 

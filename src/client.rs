@@ -12,7 +12,7 @@ use cpal::{
 use crossbeam_queue::ArrayQueue;
 use magnum_opus::{Channels::*, Decoder as AudioDecoder};
 #[cfg(not(target_os = "linux"))]
-use ringbuf::{ring_buffer::RbBase, Rb};
+use ringbuf::traits::{Consumer, Observer, Producer, RingBuffer};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,

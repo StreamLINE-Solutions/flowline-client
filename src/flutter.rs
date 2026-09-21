@@ -2080,6 +2080,35 @@ pub mod sessions {
             })
     }
 
+    /// Ids uniques des pairs contrôlés par ce poste (sessions sortantes
+    /// actives) — preuve mutuelle d'attribution (audit N-02c, V2).
+    #[inline]
+    pub fn get_controlled_peers() -> Vec<String> {
+        let mut peers: Vec<String> = SESSIONS
+            .read()
+            .unwrap()
+            .keys()
+            .map(|(peer_id, _)| peer_id.clone())
+            .collect();
+        peers.sort();
+        peers.dedup();
+        peers
+    }
+
+    /// Publie les pairs contrôlés vers le heartbeat : en direct dans ce process
+    /// (Android, portable) et via IPC vers `--server` (Windows service installé,
+    /// où le heartbeat tourne dans un autre process).
+    #[inline]
+    pub fn publish_controlled_peers() {
+        let peers = get_controlled_peers();
+        crate::hbbs_http::sync::set_controlled_peers(peers.clone());
+        #[cfg(all(
+            feature = "flutter",
+            not(any(target_os = "android", target_os = "ios"))
+        ))]
+        crate::ipc::update_controlled_peers(peers).ok();
+    }
+
     #[inline]
     pub fn get_session_by_session_id(id: &SessionID) -> Option<FlutterSession> {
         SESSIONS
@@ -2122,6 +2151,7 @@ pub mod sessions {
         let s = SESSIONS.write().unwrap().remove(&remove_peer_key?);
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         update_session_count_to_server();
+        publish_controlled_peers();
         s
     }
 
@@ -2246,6 +2276,7 @@ pub mod sessions {
             .insert(session_id, Default::default());
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         update_session_count_to_server();
+        publish_controlled_peers();
     }
 
     #[inline]

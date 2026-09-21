@@ -161,20 +161,23 @@ jobs:
         shell: bash
         run: |
           if [ -f "$HOME/flowline-key.properties" ]; then
+            chmod 600 "$HOME/flowline-key.properties" 2>/dev/null || true
             cp "$HOME/flowline-key.properties" flutter/android/key.properties
+            chmod 600 flutter/android/key.properties
             echo "OK: signature avec le keystore de production (local)"
           else
-            KS="$HOME/flowline-android.keystore"
-            if [ ! -f "$KS" ]; then
-              keytool -genkeypair -v -keystore "$KS" -alias flowline -keyalg RSA -keysize 2048 \
-                -validity 10000 -storepass flowline -keypass flowline \
-                -dname "CN=FlowLINE, OU=StreamLINE, O=StreamLINE Solutions, C=CH" 2>/dev/null
-            fi
-            echo "storeFile=$HOME/flowline-android.keystore" > flutter/android/key.properties
-            echo "storePassword=flowline" >> flutter/android/key.properties
-            echo "keyPassword=flowline" >> flutter/android/key.properties
-            echo "keyAlias=flowline" >> flutter/android/key.properties
-            echo "WARN: keystore jetable (fallback) — pas de clé de production"
+            # F4 (audit 21/09) : plus de mots de passe triviaux en dur dans un
+            # repo public, et chemin distinct du keystore prod. Keystore jetable
+            # par run dans $RUNNER_TEMP (jamais réutilisé, jamais publié).
+            KS="$RUNNER_TEMP/flowline-ci-android.keystore"
+            PASS="$(openssl rand -hex 24)"
+            keytool -genkeypair -v -keystore "$KS" -alias flowline-ci -keyalg RSA -keysize 2048 \
+              -validity 1 -storepass "$PASS" -keypass "$PASS" \
+              -dname "CN=FlowLINE CI, OU=StreamLINE, O=StreamLINE Solutions, C=CH" 2>/dev/null
+            printf 'storeFile=%s\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=flowline-ci\n' \
+              "$KS" "$PASS" "$PASS" > flutter/android/key.properties
+            chmod 600 flutter/android/key.properties
+            echo "WARN: keystore jetable (fallback, mot de passe aléatoire) — pas de clé de production"
           fi
 
       - name: Build FlowLINE Support APK
