@@ -84,6 +84,14 @@ protobuf {
 android {
     namespace "com.carriez.flutter_hbb"
     compileSdkVersion 36
+    // AGP a besoin du NDK pour extraire les symboles natifs (debugSymbolLevel)
+    // et stripper les .so packagés. Sans ndkVersion explicite, AGP prend le
+    // défaut de Flutter (23.1.7779620, absent du runner) → aucun symbole dans
+    // BUNDLE-METADATA et libs non strippées. On aligne sur le NDK du runner.
+    def ndkHomeEnv = System.getenv('ANDROID_NDK_HOME')
+    if (ndkHomeEnv != null && !ndkHomeEnv.isEmpty()) {
+        ndkVersion new File(ndkHomeEnv).name
+    }
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
 
