@@ -7,6 +7,10 @@ on:
   # exportés via le .env du runner (playbook archivé flowline-runner-android-setup.yml).
   workflow_dispatch:
 
+# F14 (audit 21/09) : moindre privilège — le GITHUB_TOKEN du run ne peut que lire.
+permissions:
+  contents: read
+
 env:
   RUST_VERSION: "1.88"
   FLUTTER_VERSION: "3.24.5"

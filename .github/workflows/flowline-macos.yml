@@ -5,6 +5,10 @@ on:
   # Réactiver en ré-ajoutant: push: branches: [main]
   workflow_dispatch:
 
+# F14 (audit 21/09) : moindre privilège — le GITHUB_TOKEN du run ne peut que lire.
+permissions:
+  contents: read
+
 env:
   MAC_RUST_VERSION: "1.88"
   LLVM_VERSION: "15.0.6"

@@ -5,6 +5,10 @@ on:
   # à 0 HIGH — mitigations documentées dans le ticket 0049).
   workflow_dispatch:
 
+# F14 (audit 21/09) : moindre privilège — le GITHUB_TOKEN du run ne peut que lire.
+permissions:
+  contents: read
+
 env:
   OSV_SCANNER_IMAGE: ghcr.io/google/osv-scanner:v2
 
