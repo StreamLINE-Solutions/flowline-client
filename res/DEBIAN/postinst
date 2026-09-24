@@ -16,7 +16,7 @@ if [ "$1" = configure ]; then
 		cp /usr/share/flowline/files/systemd/flowline.service /usr/lib/systemd/system/flowline.service
 		# try fix error in Ubuntu 18.04
 		# Failed to reload flowline.service: Unit flowline.service is not loaded properly: Exec format error.
-		# /usr/lib/systemd/system/flowline.service:10: Executable path is not absolute: pkill -f "flowline --"
+		# /usr/lib/systemd/system/flowline.service:10: Executable path is not absolute: pkill -x flowline
 		if [ -e /usr/bin/pkill ]; then
 			sed -i "s|pkill|/usr/bin/pkill|g" /usr/lib/systemd/system/flowline.service
 		fi

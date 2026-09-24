@@ -2227,18 +2227,33 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
 /// UI (onglet Network, 2FA, Change ID) au démarrage. Compilé en dur via
 /// `FLOWLINE_RESTRICT_SETTINGS` (build.rs) → non modifiable côté client.
 /// Niveau assumé : masquage UI seul (pas de blocage effectif).
+///
+/// C-05 (audit 21/09) : « Allow insecure TLS fallback » est en plus **masqué**
+/// (clé builtin ci-dessous, UI Sciter ; les UI Flutter cachent déjà l'onglet
+/// Network via `hide-network-settings`) et **effectivement désactivé** — la
+/// valeur est forcée à `N` dans OVERWRITE_LOCAL_SETTINGS (priorité sur la
+/// config utilisateur) : le repli TLS insecure est refusé même si l'option est
+/// posée à la main dans le fichier de config, et le réglage est verrouillé
+/// (is_option_fixed).
 pub fn apply_flowline_builtin_options() {
     if !config::RESTRICT_SETTINGS {
         return;
     }
-    let mut settings = config::BUILTIN_SETTINGS.write().unwrap();
-    for key in [
-        config::keys::OPTION_HIDE_NETWORK_SETTINGS,
-        config::keys::OPTION_HIDE_2FA_SETTINGS,
-        config::keys::OPTION_DISABLE_CHANGE_ID,
-    ] {
-        settings.insert(key.to_owned(), "Y".to_owned());
+    {
+        let mut settings = config::BUILTIN_SETTINGS.write().unwrap();
+        for key in [
+            config::keys::OPTION_HIDE_NETWORK_SETTINGS,
+            config::keys::OPTION_HIDE_2FA_SETTINGS,
+            config::keys::OPTION_DISABLE_CHANGE_ID,
+            "hide-insecure-tls-fallback",
+        ] {
+            settings.insert(key.to_owned(), "Y".to_owned());
+        }
     }
+    config::OVERWRITE_LOCAL_SETTINGS.write().unwrap().insert(
+        config::keys::OPTION_ALLOW_INSECURE_TLS_FALLBACK.to_owned(),
+        "N".to_owned(),
+    );
 }
 
 pub fn load_custom_client() {

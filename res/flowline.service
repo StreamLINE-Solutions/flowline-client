@@ -7,10 +7,11 @@ After=systemd-user-sessions.service
 Type=simple
 ExecStart=/usr/bin/flowline --service
 # kill --tray and --server both
-ExecStop=pkill -f "flowline --"
-# below two lines do not work, have to use above one line
-#ExecStop=pkill -f "flowline --tray"
-#ExecStop=pkill -f "flowline --server"
+# C-07 (audit 21/09) : -x (nom exact du processus) au lieu de -f (ligne de
+# commande complète) — évite de tuer un processus tiers dont la cmdline
+# contiendrait « flowline -- ».
+ExecStop=pkill -x flowline
+# note : -x ne permet pas de cibler un seul mode (--tray ou --server).
 PIDFile=/run/flowline.pid
 KillMode=mixed
 TimeoutStopSec=30
