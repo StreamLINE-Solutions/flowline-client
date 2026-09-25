@@ -990,7 +990,7 @@ dependencies = [
 [[package]]
 name = "cacao"
 version = "0.4.0-beta2"
-source = "git+https://github.com/clslaid/cacao?branch=feat%2Fset-file-urls#05e1536b0b43aaae308ec72c0eed703e875b7b95"
+source = "git+https://github.com/clslaid/cacao?rev=05e1536b0b43aaae308ec72c0eed703e875b7b95#05e1536b0b43aaae308ec72c0eed703e875b7b95"
 dependencies = [
  "bitmask-enum",
  "block2 0.2.0-alpha.6",
@@ -1741,7 +1741,7 @@ dependencies = [
 [[package]]
 name = "cpal"
 version = "0.15.3"
-source = "git+https://github.com/rustdesk-org/cpal?branch=osx-screencapturekit#6b374bcaed076750ca8fce6da518ab39b882e14a"
+source = "git+https://github.com/rustdesk-org/cpal?rev=6b374bcaed076750ca8fce6da518ab39b882e14a#6b374bcaed076750ca8fce6da518ab39b882e14a"
 dependencies = [
  "alsa",
  "cidre",
@@ -2817,7 +2817,7 @@ dependencies = [
 [[package]]
 name = "filedescriptor"
 version = "0.8.2"
-source = "git+https://github.com/rustdesk-org/wezterm?branch=rustdesk%2Fpty_based_0.8.1#80174f8009f41565f0fa8c66dab90d4f9211ae16"
+source = "git+https://github.com/rustdesk-org/wezterm?rev=80174f8009f41565f0fa8c66dab90d4f9211ae16#80174f8009f41565f0fa8c66dab90d4f9211ae16"
 dependencies = [
  "libc",
  "thiserror 1.0.61",
@@ -5275,7 +5275,7 @@ dependencies = [
 [[package]]
 name = "nokhwa"
 version = "0.10.7"
-source = "git+https://github.com/rustdesk-org/nokhwa.git?branch=fix_from_raw_parts#c2f74662b6ce117f7f94301693fdfadc0b1ec91a"
+source = "git+https://github.com/rustdesk-org/nokhwa.git?rev=c2f74662b6ce117f7f94301693fdfadc0b1ec91a#c2f74662b6ce117f7f94301693fdfadc0b1ec91a"
 dependencies = [
  "flume",
  "image 0.25.1",
@@ -5290,7 +5290,7 @@ dependencies = [
 [[package]]
 name = "nokhwa-bindings-linux"
 version = "0.1.1"
-source = "git+https://github.com/rustdesk-org/nokhwa.git?branch=fix_from_raw_parts#c2f74662b6ce117f7f94301693fdfadc0b1ec91a"
+source = "git+https://github.com/rustdesk-org/nokhwa.git?rev=c2f74662b6ce117f7f94301693fdfadc0b1ec91a#c2f74662b6ce117f7f94301693fdfadc0b1ec91a"
 dependencies = [
  "nokhwa-core",
  "v4l",
@@ -5299,7 +5299,7 @@ dependencies = [
 [[package]]
 name = "nokhwa-bindings-macos"
 version = "0.2.2"
-source = "git+https://github.com/rustdesk-org/nokhwa.git?branch=fix_from_raw_parts#c2f74662b6ce117f7f94301693fdfadc0b1ec91a"
+source = "git+https://github.com/rustdesk-org/nokhwa.git?rev=c2f74662b6ce117f7f94301693fdfadc0b1ec91a#c2f74662b6ce117f7f94301693fdfadc0b1ec91a"
 dependencies = [
  "block",
  "cocoa-foundation",
@@ -5315,7 +5315,7 @@ dependencies = [
 [[package]]
 name = "nokhwa-bindings-windows"
 version = "0.4.2"
-source = "git+https://github.com/rustdesk-org/nokhwa.git?branch=fix_from_raw_parts#c2f74662b6ce117f7f94301693fdfadc0b1ec91a"
+source = "git+https://github.com/rustdesk-org/nokhwa.git?rev=c2f74662b6ce117f7f94301693fdfadc0b1ec91a#c2f74662b6ce117f7f94301693fdfadc0b1ec91a"
 dependencies = [
  "dlopen",
  "lazy_static",
@@ -5327,7 +5327,7 @@ dependencies = [
 [[package]]
 name = "nokhwa-core"
 version = "0.1.5"
-source = "git+https://github.com/rustdesk-org/nokhwa.git?branch=fix_from_raw_parts#c2f74662b6ce117f7f94301693fdfadc0b1ec91a"
+source = "git+https://github.com/rustdesk-org/nokhwa.git?rev=c2f74662b6ce117f7f94301693fdfadc0b1ec91a#c2f74662b6ce117f7f94301693fdfadc0b1ec91a"
 dependencies = [
  "bytes",
  "image 0.25.1",
@@ -6092,7 +6092,7 @@ dependencies = [
 [[package]]
 name = "pam-sys"
 version = "1.0.0-alpha4"
-source = "git+https://github.com/rustdesk-org/pam-sys?branch=fix%2Fv1.0.0-alpha4_gnuc_va_list#3337c9bb9a9c68d7497ec8c93cad2368c26091b7"
+source = "git+https://github.com/rustdesk-org/pam-sys?rev=3337c9bb9a9c68d7497ec8c93cad2368c26091b7#3337c9bb9a9c68d7497ec8c93cad2368c26091b7"
 dependencies = [
  "bindgen 0.59.2",
  "libc",
@@ -6506,7 +6506,7 @@ dependencies = [
 [[package]]
 name = "portable-pty"
 version = "0.8.1"
-source = "git+https://github.com/rustdesk-org/wezterm?branch=rustdesk%2Fpty_based_0.8.1#80174f8009f41565f0fa8c66dab90d4f9211ae16"
+source = "git+https://github.com/rustdesk-org/wezterm?rev=80174f8009f41565f0fa8c66dab90d4f9211ae16#80174f8009f41565f0fa8c66dab90d4f9211ae16"
 dependencies = [
  "anyhow",
  "bitflags 1.3.2",
@@ -7684,7 +7684,7 @@ dependencies = [
 [[package]]
 name = "sciter-rs"
 version = "0.5.57"
-source = "git+https://github.com/rustdesk-org/rust-sciter?branch=dyn#5322f3a755a0e6bf999fbc60d1efc35246c0f821"
+source = "git+https://github.com/rustdesk-org/rust-sciter?rev=5322f3a755a0e6bf999fbc60d1efc35246c0f821#5322f3a755a0e6bf999fbc60d1efc35246c0f821"
 dependencies = [
  "lazy_static",
  "libc",
@@ -8493,7 +8493,7 @@ dependencies = [
 [[package]]
 name = "sysinfo"
 version = "0.29.10"
-source = "git+https://github.com/rustdesk-org/sysinfo?branch=rlim_max#90b1705d909a4902dbbbdea37ee64db17841077d"
+source = "git+https://github.com/rustdesk-org/sysinfo?rev=90b1705d909a4902dbbbdea37ee64db17841077d#90b1705d909a4902dbbbdea37ee64db17841077d"
 dependencies = [
  "cfg-if 1.0.0",
  "core-foundation-sys 0.8.7",
@@ -8566,7 +8566,7 @@ dependencies = [
 [[package]]
 name = "tao"
 version = "0.25.0"
-source = "git+https://github.com/rustdesk-org/tao?branch=dev#288c219cb0527e509590c2b2d8e7072aa9feb2d3"
+source = "git+https://github.com/rustdesk-org/tao?rev=288c219cb0527e509590c2b2d8e7072aa9feb2d3#288c219cb0527e509590c2b2d8e7072aa9feb2d3"
 dependencies = [
  "bitflags 1.3.2",
  "cc",
@@ -8606,7 +8606,7 @@ dependencies = [
 [[package]]
 name = "tao-macros"
 version = "0.1.2"
-source = "git+https://github.com/rustdesk-org/tao?branch=dev#288c219cb0527e509590c2b2d8e7072aa9feb2d3"
+source = "git+https://github.com/rustdesk-org/tao?rev=288c219cb0527e509590c2b2d8e7072aa9feb2d3#288c219cb0527e509590c2b2d8e7072aa9feb2d3"
 dependencies = [
  "proc-macro2 1.0.93",
  "quote 1.0.47",
@@ -8711,7 +8711,7 @@ dependencies = [
 [[package]]
 name = "tfc"
 version = "0.7.0"
-source = "git+https://github.com/rustdesk-org/The-Fat-Controller?branch=history%2Frebase_upstream_20240722#78bb80a8e596e4c14ae57c8448f5fca75f91f2b0"
+source = "git+https://github.com/rustdesk-org/The-Fat-Controller?rev=78bb80a8e596e4c14ae57c8448f5fca75f91f2b0#78bb80a8e596e4c14ae57c8448f5fca75f91f2b0"
 dependencies = [
  "anyhow",
  "core-graphics 0.23.2",
@@ -11124,7 +11124,7 @@ dependencies = [
 [[package]]
 name = "x11-clipboard"
 version = "0.8.1"
-source = "git+https://github.com/clslaid/x11-clipboard?branch=feat%2Fstore-batch#5fc2e73bc01ada3681159b34cf3ea8f0d14cd904"
+source = "git+https://github.com/clslaid/x11-clipboard?rev=5fc2e73bc01ada3681159b34cf3ea8f0d14cd904#5fc2e73bc01ada3681159b34cf3ea8f0d14cd904"
 dependencies = [
  "x11rb 0.12.0",
 ]

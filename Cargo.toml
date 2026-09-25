@@ -84,12 +84,12 @@ reqwest = { version = "0.12", features = ["blocking", "socks", "json", "native-t
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 # https://github.com/rustdesk/rustdesk/discussions/10197, not use cpal on linux
-cpal = { git = "https://github.com/rustdesk-org/cpal", branch = "osx-screencapturekit" }
+cpal = { git = "https://github.com/rustdesk-org/cpal", rev = "6b374bcaed076750ca8fce6da518ab39b882e14a" }
 ringbuf = "0.5"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 mac_address = "1.1"
-sciter-rs = { git = "https://github.com/rustdesk-org/rust-sciter", branch = "dyn" }
+sciter-rs = { git = "https://github.com/rustdesk-org/rust-sciter", rev = "5322f3a755a0e6bf999fbc60d1efc35246c0f821" }
 sys-locale = "0.3"
 enigo = { path = "libs/enigo", features = [ "with_serde" ] }
 clipboard = { path = "libs/clipboard" }
@@ -97,7 +97,7 @@ ctrlc = "3.2"
 # arboard = { version = "3.4", features = ["wayland-data-control"] }
 arboard = { git = "https://github.com/rustdesk-org/arboard", features = ["wayland-data-control"] }
 clipboard-master = { git = "https://github.com/rustdesk-org/clipboard-master" }
-portable-pty = { git = "https://github.com/rustdesk-org/wezterm", branch = "rustdesk/pty_based_0.8.1", package = "portable-pty" }
+portable-pty = { git = "https://github.com/rustdesk-org/wezterm", rev = "80174f8009f41565f0fa8c66dab90d4f9211ae16", package = "portable-pty" }
 
 system_shutdown = "4.0"
 qrcode-generator = "4.1"
@@ -159,7 +159,7 @@ foreign-types = "0.3"
 
 [target.'cfg(any(target_os = "macos", target_os = "linux", target_os = "windows"))'.dependencies]
 tray-icon = { git = "https://github.com/tauri-apps/tray-icon", version = "0.21.3" }
-tao = { git = "https://github.com/rustdesk-org/tao", branch = "dev" }
+tao = { git = "https://github.com/rustdesk-org/tao", rev = "288c219cb0527e509590c2b2d8e7072aa9feb2d3" }
 image = "0.24"
 
 [target.'cfg(any(target_os = "macos", target_os = "linux"))'.dependencies]
@@ -183,7 +183,7 @@ evdev = { git="https://github.com/rustdesk-org/evdev" }
 dbus = "0.9"
 dbus-crossroads = "0.5"
 pam = { path = "libs/pam" }
-x11-clipboard = {git="https://github.com/clslaid/x11-clipboard", branch = "feat/store-batch", optional = true}
+x11-clipboard = {git="https://github.com/clslaid/x11-clipboard", rev = "5fc2e73bc01ada3681159b34cf3ea8f0d14cd904", optional = true}
 x11rb =  {version = "0.12", features = ["all-extensions"], optional = true}
 percent-encoding = {version = "2.3", optional = true}
 once_cell = {version = "1.18", optional = true}

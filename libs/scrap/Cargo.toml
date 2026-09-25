@@ -64,5 +64,5 @@ git = "https://github.com/rustdesk-org/hwcodec"
 optional = true
 
 [target.'cfg(any(target_os = "windows", target_os = "linux"))'.dependencies]
-nokhwa = { git = "https://github.com/rustdesk-org/nokhwa.git", branch = "fix_from_raw_parts", features = ["input-native"] }
+nokhwa = { git = "https://github.com/rustdesk-org/nokhwa.git", rev = "c2f74662b6ce117f7f94301693fdfadc0b1ec91a", features = ["input-native"] }
 
