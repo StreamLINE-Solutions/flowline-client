@@ -31,8 +31,8 @@ env:
   RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
   # API compte FlowLINE (TLS via NPM). Surchargeable au dispatch.
   FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
-  # PAT org pour les clones git des dépendances privées (pubspec: rustdesk-org/*).
-  GITHUB_TOKEN: ${{ secrets.FLOWLINE_GH_TOKEN }}
+  # Audit 25/09 (0065) : plus de PAT en env workflow-level — limité aux steps
+  # checkout + « Configure git credentials ».
 
 jobs:
   build-windows-x64:
@@ -54,6 +54,8 @@ jobs:
           # Repos privés (flowline-hbb-common...) : GITHUB_TOKEN du job ne voit
           # que le repo courant → PAT org (secret FLOWLINE_GH_TOKEN) pour les submodules.
           token: ${{ secrets.FLOWLINE_GH_TOKEN }}
+          # Audit 25/09 (0065) : ne pas persister le PAT dans .git/config.
+          persist-credentials: false
 
       # 7-Zip requis par install-llvm-action pour extraire LLVM. Préinstallé sur
       # GH hosted ; sur self-hosted l'installeur n'ajoute pas forcément le PATH.
@@ -129,6 +131,9 @@ jobs:
       - name: Configure git credentials (deps git privées, pubspec rustdesk-org/*)
         # Sur GH hosted un credential helper global existe ; pas sur self-hosted.
         # GIT_CONFIG_GLOBAL = config job-only (ne touche pas au ~/.gitconfig).
+        # Audit 25/09 (0065) : PAT limité à ce step (plus d'env workflow-level).
+        env:
+          GITHUB_TOKEN: ${{ secrets.FLOWLINE_GH_TOKEN }}
         shell: bash
         run: |
           GITCFG="$RUNNER_TEMP/git-global.conf"
@@ -328,3 +333,10 @@ jobs:
           name: flowline-support-onefile-${{ env.VERSION }}
           path: flowline-support-${{ env.VERSION }}-onefile.exe
           retention-days: 30
+
+      - name: Cleanup git credentials (PAT hors fichier temporaire)
+        # Audit 25/09 (0065) : runner self-hosted persistant — ne pas laisser le
+        # PAT dans $RUNNER_TEMP/git-global.conf.
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/git-global.conf"
