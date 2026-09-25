@@ -267,6 +267,9 @@ class PlatformFFI {
 
   void setRgbaCallback(void Function(int, Uint8List) fun) async {}
 
+// web only
+  void setCursorDataCallback(
+      void Function(String, int, int, int, int, Uint8List) fun) async {}
   void startDesktopWebListener() {}
 
   void stopDesktopWebListener() {}
