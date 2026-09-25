@@ -2972,6 +2972,18 @@ pub fn main_set_common(_key: String, _value: String) {
                     new_version_file.to_str()
                 );
                 if let Some(f) = new_version_file.to_str() {
+                    // 0050 : vérifier la signature Ed25519 du fichier téléchargé
+                    // (manifeste signé) avant de lancer l'installation — même
+                    // garde que l'auto-update. Échec => fichier supprimé, pas
+                    // d'installation (fail closed).
+                    #[cfg(target_os = "windows")]
+                    if let Err(e) =
+                        crate::updater::verify_downloaded_update(&_value, &new_version_file)
+                    {
+                        log::error!("Mise à jour refusée (manifeste invalide): {}", e);
+                        fs::remove_file(&new_version_file).ok();
+                        return;
+                    }
                     // 1.4.0 does not support "--update"
                     // But we can assume that the new version supports it.
 

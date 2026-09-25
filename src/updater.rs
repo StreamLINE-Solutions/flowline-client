@@ -1,8 +1,8 @@
 use crate::{common::do_check_software_update, hbbs_http::create_http_client_with_url};
-use hbb_common::{bail, config, log, ResultType};
+use hbb_common::{anyhow, bail, config, log, ResultType};
 use std::{
     io::Write,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{
         atomic::{AtomicUsize, Ordering},
         mpsc::{channel, Receiver, Sender},
@@ -195,6 +195,17 @@ fn check_update(manually: bool) -> ResultType<()> {
             let mut file = std::fs::File::create(&file_path)?;
             file.write_all(&file_data)?;
         }
+        // 0050 : vérifier le manifeste signé (Ed25519, clé embarquée) et le
+        // SHA-256 du fichier AVANT toute installation. Une API/NPM compromise ne
+        // peut pas forger de mise à jour. Échec => fichier supprimé, pas
+        // d'installation (fail closed).
+        #[cfg(target_os = "windows")]
+        if update_msi {
+            if let Err(e) = fetch_and_verify_update_manifest(&download_url, version, &file_path) {
+                std::fs::remove_file(&file_path).ok();
+                bail!("Mise à jour refusée (manifeste invalide): {e}");
+            }
+        }
         // We have checked if the `conns` is empty before, but we need to check again.
         // No need to care about the downloaded file here, because it's rare case that the `conns` are empty
         // before the download, but not empty after the download.
@@ -297,4 +308,61 @@ fn update_new_version(update_msi: bool, version: &str, file_path: &PathBuf) {
 pub fn get_download_file_from_url(url: &str) -> Option<PathBuf> {
     let filename = url.split('/').last()?;
     Some(std::env::temp_dir().join(filename))
+}
+
+/// 0050 : extrait la version depuis l'URL de téléchargement du MSI
+/// (`.../api/update/download/<version>/<fichier>`).
+pub fn version_from_download_url(download_url: &str) -> Option<&str> {
+    let rest = download_url.split_once("/download/")?.1;
+    let version = rest.split('/').next()?;
+    if version.is_empty() {
+        None
+    } else {
+        Some(version)
+    }
+}
+
+/// 0050 : dérive l'URL du manifeste signé depuis celle du MSI
+/// (`.../api/update/download/<version>/...` → `.../api/update/manifest/<version>`).
+fn manifest_url_from_download_url(download_url: &str) -> Option<String> {
+    let (prefix, _) = download_url.split_once("/download/")?;
+    let version = version_from_download_url(download_url)?;
+    Some(format!("{prefix}/manifest/{version}"))
+}
+
+/// 0050 : récupère le manifeste signé servi par l'API et le vérifie contre le
+/// fichier téléchargé (key_id/clé embarquée, signature Ed25519, version, nom,
+/// taille, SHA-256). Toute anomalie => erreur (l'appelant refuse et supprime).
+pub fn fetch_and_verify_update_manifest(
+    download_url: &str,
+    version: &str,
+    file_path: &Path,
+) -> ResultType<()> {
+    let manifest_url = manifest_url_from_download_url(download_url)
+        .ok_or_else(|| anyhow::anyhow!("URL de manifeste introuvable: {download_url}"))?;
+    let client = create_http_client_with_url(&manifest_url);
+    let response = client.get(&manifest_url).send()?;
+    if !response.status().is_success() {
+        bail!(
+            "manifeste de mise à jour indisponible: {}",
+            response.status()
+        );
+    }
+    let envelope: hbb_common::update_manifest::UpdateManifestEnvelope =
+        serde_json::from_slice(&response.bytes()?)?;
+    hbb_common::update_manifest::verify_update_manifest(&envelope, version, file_path)?;
+    log::debug!(
+        "Manifeste de mise à jour vérifié (version {}, fichier {:?})",
+        version,
+        file_path
+    );
+    Ok(())
+}
+
+/// 0050 : vérifie un fichier déjà téléchargé (chemin manuel de mise à jour,
+/// `update-me` côté UI) avant de lancer l'installation.
+pub fn verify_downloaded_update(download_url: &str, file_path: &Path) -> ResultType<()> {
+    let version = version_from_download_url(download_url)
+        .ok_or_else(|| anyhow::anyhow!("version introuvable dans l'URL de mise à jour"))?;
+    fetch_and_verify_update_manifest(download_url, version, file_path)
 }
