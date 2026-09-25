@@ -2981,7 +2981,7 @@ pub fn main_set_common(_key: String, _value: String) {
                         crate::updater::verify_downloaded_update(&_value, &new_version_file)
                     {
                         log::error!("Mise à jour refusée (manifeste invalide): {}", e);
-                        fs::remove_file(&new_version_file).ok();
+                        fs::remove_file(f).ok();
                         return;
                     }
                     // 1.4.0 does not support "--update"
