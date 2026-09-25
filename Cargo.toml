@@ -163,7 +163,9 @@ tao = { git = "https://github.com/rustdesk-org/tao", rev = "288c219cb0527e509590
 image = "0.24"
 
 [target.'cfg(any(target_os = "macos", target_os = "linux"))'.dependencies]
-keepawake = { git = "https://github.com/rustdesk-org/keepawake-rs" }
+# 0067 : vendore (rustdesk-org/keepawake-rs @64d5685, shadow-rs retire) — supprime
+# la chaine libgit2-sys/git2/atty (RUSTSEC-2024-0013, HIGH build-only).
+keepawake = { path = "libs/keepawake" }
 
 [target.'cfg(any(target_os = "windows", target_os = "linux"))'.dependencies]
 wallpaper = { git = "https://github.com/rustdesk-org/wallpaper.rs" }
@@ -203,7 +205,7 @@ android-wakelock = { git = "https://github.com/rustdesk-org/android-wakelock" }
 
 [workspace]
 members = ["libs/scrap", "libs/hbb_common", "libs/enigo", "libs/clipboard", "libs/virtual_display", "libs/virtual_display/dylib", "libs/portable", "libs/remote_printer"]
-exclude = ["vdi/host", "examples/custom_plugin"]
+exclude = ["vdi/host", "examples/custom_plugin", "libs/keepawake"]
 
 # Patch libxdo-sys to use a stub implementation that doesn't require libxdo
 # This allows building and running on systems without libxdo installed (e.g., Wayland-only)
