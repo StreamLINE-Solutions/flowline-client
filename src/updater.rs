@@ -25,8 +25,10 @@ static CONTROLLING_SESSION_COUNT: AtomicUsize = AtomicUsize::new(0);
 const DUR_ONE_DAY: Duration = Duration::from_secs(60 * 60 * 24);
 
 /// 0072 : base des artefacts publiés (site FlowLINE).
+#[cfg(target_os = "linux")]
 const FLOWLINE_DOWNLOADS_BASE: &str = "https://flowline.my-vth.ch/downloads";
 /// 0072 : page de téléchargement (fallback AppImage / architecture non couverte).
+#[cfg(target_os = "linux")]
 const FLOWLINE_DOWNLOAD_PAGE: &str = "https://flowline.my-vth.ch/download.html";
 
 pub fn update_controlling_session_count(count: usize) {
@@ -141,98 +143,82 @@ fn check_update(manually: bool) -> ResultType<()> {
     } else {
         let download_url = update_url.replace("tag", "download");
         let version = download_url.split('/').last().unwrap_or_default();
-        log::debug!("New version available: {}", &version);
-        // 0072 (Option B) : sous Linux, pré-télécharger et vérifier le paquet du
-        // site FlowLINE ; le clic du bandeau ouvrira l'installateur système.
-        #[cfg(target_os = "linux")]
-        {
-            if let Err(e) = download_verified_linux_deb(version) {
-                log::error!(
-                    "Pré-téléchargement de la mise à jour Linux impossible: {}",
-                    e
+        #[cfg(target_os = "windows")]
+        let download_url = if cfg!(feature = "flutter") {
+            let Some(arch) = crate::platform::windows::release_arch_suffix() else {
+                bail!(
+                    "Unsupported Windows release architecture: {}",
+                    std::env::consts::ARCH
                 );
+            };
+            format!(
+                "{}/{}-{}-{}.{}",
+                download_url,
+                crate::get_app_name().to_lowercase(),
+                version,
+                arch,
+                if update_msi { "msi" } else { "exe" }
+            )
+        } else {
+            format!("{}/rustdesk-{}-x86-sciter.exe", download_url, version)
+        };
+        log::debug!("New version available: {}", &version);
+        let client = create_http_client_with_url(&download_url);
+        let Some(file_path) = get_download_file_from_url(&download_url) else {
+            bail!("Failed to get the file path from the URL: {}", download_url);
+        };
+        let mut is_file_exists = false;
+        if file_path.exists() {
+            // Check if the file size is the same as the server file size
+            // If the file size is the same, we don't need to download it again.
+            let file_size = std::fs::metadata(&file_path)?.len();
+            let response = client.head(&download_url).send()?;
+            if !response.status().is_success() {
+                bail!("Failed to get the file size: {}", response.status());
+            }
+            let total_size = response
+                .headers()
+                .get(reqwest::header::CONTENT_LENGTH)
+                .and_then(|ct_len| ct_len.to_str().ok())
+                .and_then(|ct_len| ct_len.parse::<u64>().ok());
+            let Some(total_size) = total_size else {
+                bail!("Failed to get content length");
+            };
+            if file_size == total_size {
+                is_file_exists = true;
+            } else {
+                std::fs::remove_file(&file_path)?;
             }
         }
-        #[cfg(not(target_os = "linux"))]
-        {
+        if !is_file_exists {
+            let response = client.get(&download_url).send()?;
+            if !response.status().is_success() {
+                bail!(
+                    "Failed to download the new version file: {}",
+                    response.status()
+                );
+            }
+            let file_data = response.bytes()?;
+            let mut file = std::fs::File::create(&file_path)?;
+            file.write_all(&file_data)?;
+        }
+        // 0050 : vérifier le manifeste signé (Ed25519, clé embarquée) et le
+        // SHA-256 du fichier AVANT toute installation. Une API/NPM compromise ne
+        // peut pas forger de mise à jour. Échec => fichier supprimé, pas
+        // d'installation (fail closed).
+        #[cfg(target_os = "windows")]
+        if update_msi {
+            if let Err(e) = fetch_and_verify_update_manifest(&download_url, version, &file_path) {
+                std::fs::remove_file(&file_path).ok();
+                bail!("Mise à jour refusée (manifeste invalide): {e}");
+            }
+        }
+        // We have checked if the `conns` is empty before, but we need to check again.
+        // No need to care about the downloaded file here, because it's rare case that the `conns` are empty
+        // before the download, but not empty after the download.
+        if has_no_active_conns() {
             #[cfg(target_os = "windows")]
-            let download_url = if cfg!(feature = "flutter") {
-                let Some(arch) = crate::platform::windows::release_arch_suffix() else {
-                    bail!(
-                        "Unsupported Windows release architecture: {}",
-                        std::env::consts::ARCH
-                    );
-                };
-                format!(
-                    "{}/{}-{}-{}.{}",
-                    download_url,
-                    crate::get_app_name().to_lowercase(),
-                    version,
-                    arch,
-                    if update_msi { "msi" } else { "exe" }
-                )
-            } else {
-                format!("{}/rustdesk-{}-x86-sciter.exe", download_url, version)
-            };
-            let client = create_http_client_with_url(&download_url);
-            let Some(file_path) = get_download_file_from_url(&download_url) else {
-                bail!("Failed to get the file path from the URL: {}", download_url);
-            };
-            let mut is_file_exists = false;
-            if file_path.exists() {
-                // Check if the file size is the same as the server file size
-                // If the file size is the same, we don't need to download it again.
-                let file_size = std::fs::metadata(&file_path)?.len();
-                let response = client.head(&download_url).send()?;
-                if !response.status().is_success() {
-                    bail!("Failed to get the file size: {}", response.status());
-                }
-                let total_size = response
-                    .headers()
-                    .get(reqwest::header::CONTENT_LENGTH)
-                    .and_then(|ct_len| ct_len.to_str().ok())
-                    .and_then(|ct_len| ct_len.parse::<u64>().ok());
-                let Some(total_size) = total_size else {
-                    bail!("Failed to get content length");
-                };
-                if file_size == total_size {
-                    is_file_exists = true;
-                } else {
-                    std::fs::remove_file(&file_path)?;
-                }
-            }
-            if !is_file_exists {
-                let response = client.get(&download_url).send()?;
-                if !response.status().is_success() {
-                    bail!(
-                        "Failed to download the new version file: {}",
-                        response.status()
-                    );
-                }
-                let file_data = response.bytes()?;
-                let mut file = std::fs::File::create(&file_path)?;
-                file.write_all(&file_data)?;
-            }
-            // 0050 : vérifier le manifeste signé (Ed25519, clé embarquée) et le
-            // SHA-256 du fichier AVANT toute installation. Une API/NPM compromise ne
-            // peut pas forger de mise à jour. Échec => fichier supprimé, pas
-            // d'installation (fail closed).
-            #[cfg(target_os = "windows")]
-            if update_msi {
-                if let Err(e) =
-                    fetch_and_verify_update_manifest(&download_url, version, &file_path)
-                {
-                    std::fs::remove_file(&file_path).ok();
-                    bail!("Mise à jour refusée (manifeste invalide): {e}");
-                }
-            }
-            // We have checked if the `conns` is empty before, but we need to check again.
-            // No need to care about the downloaded file here, because it's rare case that the `conns` are empty
-            // before the download, but not empty after the download.
-            if has_no_active_conns() {
-                #[cfg(target_os = "windows")]
-                update_new_version(update_msi, &version, &file_path);
-            }
+            update_new_version(update_msi, &version, &file_path);
         }
     }
     Ok(())
@@ -387,7 +373,6 @@ pub fn verify_downloaded_update(download_url: &str, file_path: &Path) -> ResultT
         .ok_or_else(|| anyhow::anyhow!("version introuvable dans l'URL de mise à jour"))?;
     fetch_and_verify_update_manifest(download_url, version, file_path)
 }
-
 /// 0072 : nom du paquet deb du client technicien (seule l'architecture x86_64
 /// est publiée à ce jour).
 #[cfg(target_os = "linux")]
