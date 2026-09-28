@@ -1,17 +1,21 @@
+# Spec hérité de l'upstream RustDesk — NON utilisé par les builds FlowLINE
+# (deb/AppImage via CI). Champs white-label mis à jour ; renommage complet
+# (Name, chemins, services) à faire si un jour des RPM sont produits.
 Name:       rustdesk
 Version:    1.4.9
 Release:    0
-Summary:    RPM package
-License:    GPL-3.0
-URL:        https://rustdesk.com
-Vendor:     rustdesk <info@rustdesk.com>
+Summary:    FlowLINE — client de télémaintenance et d'assistance à distance
+License:    AGPL-3.0-only
+URL:        https://flowline.my-vth.ch
+Vendor:     StreamLINE-Solutions Sàrl <contact@streamline-solutions.ch>
 Requires:   gtk3 libxcb libXfixes alsa-lib libva2 pam gstreamer1-plugins-base
 Recommends: libayatana-appindicator-gtk3 libxdo
 
 # https://docs.fedoraproject.org/en-US/packaging-guidelines/Scriptlets/
 
 %description
-The best open-source remote desktop client software, written in Rust.
+FlowLINE — client de télémaintenance et d'assistance à distance
+(fork RustDesk, licence AGPL-3.0).
 
 %prep
 # we have no source, so nothing here

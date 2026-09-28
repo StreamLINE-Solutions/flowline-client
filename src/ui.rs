@@ -602,13 +602,22 @@ impl UI {
         let p = "explorer";
         #[cfg(target_os = "macos")]
         let p = "open";
+        // 0072 : toujours xdg-open sous Linux (respect du navigateur par défaut ;
+        // l'ancien code forçait firefox s'il était présent).
         #[cfg(target_os = "linux")]
-        let p = if std::path::Path::new("/usr/bin/firefox").exists() {
-            "firefox"
-        } else {
-            "xdg-open"
-        };
+        let p = "xdg-open";
         allow_err!(std::process::Command::new(p).arg(url).spawn());
+    }
+
+    fn install_update(&self) {
+        // 0072 (Option B) : télécharge et vérifie le paquet Linux puis ouvre
+        // l'installateur système (dans un thread : le téléchargement bloque).
+        #[cfg(target_os = "linux")]
+        std::thread::spawn(|| {
+            if let Err(e) = crate::updater::open_linux_update() {
+                log::error!("Mise à jour Linux impossible: {}", e);
+            }
+        });
     }
 
     fn change_id(&self, id: String) {
@@ -805,6 +814,7 @@ impl sciter::EventHandler for UI {
         fn get_software_store_path();
         fn get_software_ext();
         fn open_url(String);
+        fn install_update();
         fn change_id(String);
         fn get_async_job_status();
         fn post_request(String, String, String);
