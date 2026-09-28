@@ -850,13 +850,8 @@ class UpdateMe: Reactor.Component {
     }
 
     event click $(#install-me) {
-        if (is_linux) {
-            // 0072 (Option B) : téléchargement vérifié + installateur système.
-            handler.install_update();
-            return;
-        }
-        // 0072 : page de téléchargement (Windows : l'auto-update silencieux
-        // reste le chemin principal ; macOS : mise à jour manuelle).
+        // 0072 : page de téléchargement (Windows sciter ; l'auto-update
+        // silencieux reste le chemin principal pour les clients installés).
         handler.open_url("https://flowline.my-vth.ch/download.html");
     }
 }

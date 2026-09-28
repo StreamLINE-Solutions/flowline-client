@@ -115,6 +115,19 @@ pub fn install_me(_options: String, _path: String, _silent: bool, _debug: bool) 
 
 #[inline]
 pub fn update_me(_path: String) {
+    #[cfg(target_os = "linux")]
+    {
+        // 0072 (Option B) : téléchargement vérifié du paquet du site puis
+        // ouverture de l'installateur système (pas de root dans l'app ;
+        // v1 sans barre de progression).
+        std::thread::spawn(|| {
+            if let Err(e) = crate::updater::open_linux_update() {
+                log::error!("Mise à jour Linux impossible: {}", e);
+            }
+        });
+        return;
+    }
+    #[cfg(not(target_os = "linux"))]
     goto_install();
 }
 

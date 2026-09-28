@@ -432,7 +432,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   Widget buildHelpCards(String updateUrl) {
     if (updateUrl.isNotEmpty && !isCardClosed) {
-      final isToUpdate = (isWindows || isMacOS) && bind.mainIsInstalled();
+      final isToUpdate =
+          (isWindows || isMacOS || isLinux) && bind.mainIsInstalled();
       String btnText = isToUpdate ? 'Update' : 'Download';
       GestureTapCallback onPressed = () async {
         // Module support (0057) : page /support = un seul gros bouton adapté à
@@ -444,7 +445,13 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       };
       if (isToUpdate) {
         onPressed = () {
-          handleUpdate(updateUrl);
+          if (isLinux) {
+            // 0072 (Option B) : téléchargement vérifié du paquet puis
+            // ouverture de l'installateur système (côté Rust).
+            bind.mainUpdateMe();
+          } else {
+            handleUpdate(updateUrl);
+          }
         };
       }
       return buildInstallCard(
