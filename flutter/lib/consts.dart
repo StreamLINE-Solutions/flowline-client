@@ -700,3 +700,4 @@ extension WindowsTargetExt on int {
 }
 
 const kCheckSoftwareUpdateFinish = 'check_software_update_finish';
+const kFlowlineUpdateInstallFinish = 'flowline_update_install_finish';

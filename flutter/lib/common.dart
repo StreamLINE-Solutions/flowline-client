@@ -4051,6 +4051,26 @@ void checkUpdate() {
         stateGlobal.updateUrl.value = evt['url'];
       }
     });
+    // 1.4.21 (Option B v2) : résultat de l'installation Linux via pkexec
+    // (updater.rs) — « ok » => carte fermée + message « relancez », sinon
+    // message d'échec/annulation (installation manuelle possible).
+    platformFFI.registerEventHandler(
+        kFlowlineUpdateInstallFinish, kFlowlineUpdateInstallFinish,
+        (Map<String, dynamic> evt) async {
+      final tip = evt['status'] == 'ok'
+          ? 'update-installed-restart-tip'
+          : 'update-install-failed-tip';
+      if (evt['status'] == 'ok') {
+        stateGlobal.updateUrl.value = '';
+      }
+      gFFI.dialogManager.show((setState, close, context) => CustomAlertDialog(
+            title: Text(translate('update-title'),
+                style: TextStyle(fontSize: 21)),
+            content: Text(translate(tip)),
+            actions: [dialogButton('OK', onPressed: close)],
+            onCancel: close,
+          ));
+    });
     Timer(const Duration(seconds: 1), () async {
       bind.mainGetSoftwareUpdateUrl();
     });

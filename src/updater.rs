@@ -462,9 +462,10 @@ fn xdg_open(target: &str) -> ResultType<()> {
     Ok(())
 }
 
-/// 0072 (Option B) : ouvre la mise à jour Linux — télécharge et vérifie le
-/// .deb puis ouvre l'installateur système ; AppImage ou installation non
-/// système => ouvre la page de téléchargement du site.
+/// 0072 (Option B) / 1.4.21 (v2) : ouvre la mise à jour Linux — télécharge et
+/// vérifie le .deb puis l'installe via pkexec/apt-get (prompt polkit) ; repli
+/// sur l'ouverture de l'installateur système si pkexec est absent ; AppImage
+/// ou installation non système => ouvre la page de téléchargement du site.
 #[cfg(target_os = "linux")]
 pub fn open_linux_update() -> ResultType<()> {
     if std::env::var_os("APPIMAGE").is_some() || !Path::new("/usr/bin/flowline").exists() {
@@ -483,6 +484,56 @@ pub fn open_linux_update() -> ResultType<()> {
         return Ok(());
     }
     let path = download_verified_linux_deb(&version)?;
-    xdg_open(&path.to_string_lossy())?;
-    Ok(())
+    install_linux_deb(&path)
+}
+
+/// 1.4.21 (Option B v2) : installe le .deb vérifié via pkexec + apt-get
+/// (fenêtre de mot de passe polkit) ; si pkexec est absent, repli sur
+/// l'ouverture du fichier par l'installateur système (0072). Le résultat est
+/// remonté à l'UI Flutter via l'événement `flowline_update_install_finish`
+/// (status ok/error) — cf. `checkUpdate()` côté Dart.
+#[cfg(target_os = "linux")]
+fn install_linux_deb(path: &Path) -> ResultType<()> {
+    const PKEXEC: &str = "/usr/bin/pkexec";
+    const APT_GET: &str = "/usr/bin/apt-get";
+    if !Path::new(PKEXEC).exists() || !Path::new(APT_GET).exists() {
+        return xdg_open(&path.to_string_lossy());
+    }
+    let status = std::process::Command::new(PKEXEC)
+        .arg(APT_GET)
+        .args(["install", "-y"])
+        .arg(path)
+        .status();
+    let (ok, message) = match status {
+        Ok(s) if s.success() => (true, "installed".to_owned()),
+        Ok(s) => (
+            false,
+            format!(
+                "apt-get exited with {}",
+                s.code()
+                    .map_or_else(|| "signal".to_owned(), |code| code.to_string())
+            ),
+        ),
+        Err(e) => (false, e.to_string()),
+    };
+    log::info!(
+        "Mise à jour Linux: installation de {} via pkexec/apt-get: {}",
+        path.display(),
+        message
+    );
+    #[cfg(feature = "flutter")]
+    {
+        let mut m = std::collections::HashMap::new();
+        m.insert("name", "flowline_update_install_finish");
+        m.insert("status", if ok { "ok" } else { "error" });
+        m.insert("message", message.as_str());
+        if let Ok(data) = serde_json::to_string(&m) {
+            let _ = crate::flutter::push_global_event(crate::flutter::APP_TYPE_MAIN, data);
+        }
+    }
+    if ok {
+        Ok(())
+    } else {
+        bail!("installation de la mise à jour Linux échouée: {message}")
+    }
 }
