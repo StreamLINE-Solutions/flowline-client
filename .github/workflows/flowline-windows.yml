@@ -276,7 +276,7 @@ jobs:
       - name: Build FlowLINE MSI (WiX 4)
         run: |
           pushd ./res/msi
-          python preprocess.py --arp -d ../../rustdesk --app-name flowline -v ${{ env.VERSION }} -m "StreamLINE Solutions"
+          python preprocess.py --arp -d ../../rustdesk --app-name FlowLINE -v ${{ env.VERSION }} -m "StreamLINE Solutions"
           nuget restore msi.sln
           msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
           $msi = Get-ChildItem ./Package/bin/*/Release/en-us/Package.msi | Select-Object -First 1

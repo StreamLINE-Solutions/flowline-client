@@ -304,7 +304,7 @@ Maintainer: StreamLINE Solutions <support@streamline-solutions.ch>
 Homepage: https://flowline.ch
 Depends: libgtk-3-0t64 | libgtk-3-0, libxcb-randr0, libxdo3 | libxdo4, libxfixes3, libxcb-shape0, libxcb-xfixes0, libasound2t64 | libasound2, libsystemd0, curl, libva2, libva-drm2, libva-x11-2, libgstreamer-plugins-base1.0-0, libpam0g, gstreamer1.0-pipewire%s
 Recommends: libayatana-appindicator3-1
-Description: FlowLINE - remote control software (white-label RustDesk).
+Description: FlowLINE - Assistance à distance pour PME.
 
 """ % (version, get_deb_arch(), get_deb_extra_depends())
     file = open(control_file_path, "w")

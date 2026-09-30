@@ -1,11 +1,12 @@
-An open-source remote desktop application, the open source TeamViewer alternative.
-Source code: https://github.com/rustdesk/rustdesk
-Doc: https://rustdesk.com/docs/en/manual/mobile/
+FlowLINE — Remote assistance for SMEs.
 
-In order for a remote device to control your Android device via mouse or touch, you need to allow RustDesk to use the "Accessibility" service, RustDesk uses AccessibilityService API to implement Android remote control.
+FlowLINE lets your IT technician take control of your screen (with your consent) to help you remotely.
 
-In addition to remote control, you can also transfer files between Android devices and PCs easily with RustDesk.
+• Remote screen control (mouse, touch, keyboard)
+• File transfer
+• End-to-end encrypted sessions
+• Hosted in Switzerland, no telemetry
 
-You have full control of your data, with no concerns about security. You can use our rendezvous/relay server, or self-hosting, or write your own rendezvous/relay server. Self-hosting server is free and open source: https://github.com/rustdesk/rustdesk-server
+To be controlled remotely from another device, FlowLINE requires the Android "Accessibility" permission (AccessibilityService API). It is used only for remote control.
 
-Please download and install desktop version from: https://rustdesk.com, then you can access and control your desktop from your mobile, or control your mobile from desktop.
+Need help? Contact your company's IT service.

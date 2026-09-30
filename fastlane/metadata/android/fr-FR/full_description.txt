@@ -1,11 +1,12 @@
-Une application de bureau à distance open source, l'alternative open source à TeamViewer.
-Code source : https://github.com/rustdesk/rustdesk
-Doc : https://rustdesk.com/docs/en/manual/mobile/
+FlowLINE — Assistance à distance pour PME.
 
-Pour qu'un appareil distant puisse contrôler votre appareil Android via la souris ou le toucher, vous devez autoriser RustDesk à utiliser le service "Accessibilité", RustDesk utilise l'API AccessibilityService pour implémenter la télécommande Addroid.
+FlowLINE permet à votre technicien informatique de prendre la main sur votre écran (avec votre accord) pour vous dépanner à distance.
 
-En plus du contrôle à distance, vous pouvez également transférer facilement des fichiers entre des appareils Android et des PC avec RustDesk.
+• Contrôle de l'écran à distance (souris, tactile, clavier)
+• Transfert de fichiers
+• Sessions chiffrées de bout en bout
+• Hébergé en Suisse, aucune télémétrie
 
-Vous avez le contrôle total de vos données, sans aucun souci de sécurité. Vous pouvez utiliser notre serveur de rendez-vous/relais, ou l'auto-hébergement, ou écrire votre propre serveur de rendez-vous/relais. Le serveur auto-hébergé est gratuit et open source : https://github.com/rustdesk/rustdesk-server
+Pour être contrôlé à distance depuis un autre appareil, FlowLINE a besoin de l'autorisation Android « Accessibilité » (API AccessibilityService). Elle sert uniquement à la prise de contrôle à distance.
 
-Veuillez télécharger et installer la version de bureau à partir de : https://rustdesk.com, vous pourrez alors accéder et contrôler votre bureau à partir de votre mobile, ou contrôler votre mobile à partir du bureau.
+Besoin d'aide ? Contactez le service informatique de votre entreprise.

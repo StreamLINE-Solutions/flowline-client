@@ -1989,8 +1989,8 @@ fn get_public_base_dir() -> PathBuf {
 #[inline]
 pub fn get_custom_client_staging_dir() -> PathBuf {
     get_public_base_dir()
-        .join("RustDesk")
-        .join("RustDeskCustomClientStaging")
+        .join("FlowLINE")
+        .join("CustomClientStaging")
 }
 
 /// Removes the custom client staging directory.
@@ -1999,7 +1999,7 @@ pub fn get_custom_client_staging_dir() -> PathBuf {
 ///
 /// Rationale
 /// - The staging directory only contains a small `custom.txt`, leaving it is harmless.
-/// - Deleting directories under a public location (e.g., C:\\ProgramData\\RustDesk) is
+/// - Deleting directories under a public location (e.g., C:\\ProgramData\\FlowLINE) is
 ///   susceptible to TOCTOU attacks if an unprivileged user can replace the path with a
 ///   symlink/junction between checks and deletion.
 ///
@@ -3813,7 +3813,7 @@ pub fn message_box(text: &str) {
         .encode_utf16()
         .chain(std::iter::once(0))
         .collect::<Vec<u16>>();
-    let caption = "RustDesk Output"
+    let caption = "FlowLINE Output"
         .encode_utf16()
         .chain(std::iter::once(0))
         .collect::<Vec<u16>>();
@@ -4264,7 +4264,7 @@ pub fn send_raw_data_to_printer(printer_name: Option<String>, data: Vec<u8>) -> 
             data.len() as c_ulong,
         );
         if res != 0 {
-            bail!("Failed to send data to the printer, see logs in C:\\Windows\\temp\\test_rustdesk.log for more details.");
+            bail!("Failed to send data to the printer, see logs in C:\\Windows\\temp\\test_flowline.log for more details.");
         } else {
             log::info!("Successfully sent data to the printer");
         }
