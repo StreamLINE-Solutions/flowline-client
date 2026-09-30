@@ -79,24 +79,32 @@ jobs:
 
       - name: Defender exclusions (idempotent, accélère les builds)
         # Le service runner a un token complet (pas de filtrage UAC), contrairement
-        # à WinRM. Réduit fortement l'overhead I/O de Defender sur cargo/vcpkg/git.
+        # à WinRM. Réduit fortement l'overhead I/O de Defender sur cargo/vcpkg.
+        # 0065 : limitées aux chemins/outils de build — les exclusions larges
+        # (%TEMP%, git.exe, bash.exe, sh.exe) sont retirées à chaque run
+        # (convergence idempotente).
         run: |
+          $legacyPaths = @('C:\Users\User\AppData\Local\Temp')
+          foreach ($p in $legacyPaths) { Remove-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue }
+          $legacyProcs = @('git.exe','bash.exe','sh.exe')
+          foreach ($p in $legacyProcs) { Remove-MpPreference -ExclusionProcess $p -ErrorAction SilentlyContinue }
           $paths = @(
             'C:\actions-runner',
             'C:\Users\User\.cargo',
             'C:\Users\User\.rustup',
             'C:\Users\User\.nuget',
-            'C:\Users\User\AppData\Local\Temp',
             'C:\Program Files\LLVM'
           )
           foreach ($p in $paths) { Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue }
           $procs = @(
             'rustc.exe','cargo.exe','cl.exe','link.exe','cmake.exe','ninja.exe',
-            'vcpkg.exe','dart.exe','gen_snapshot.exe','git.exe','bash.exe','sh.exe'
+            'vcpkg.exe','dart.exe','gen_snapshot.exe'
           )
           foreach ($p in $procs) { Add-MpPreference -ExclusionProcess $p -ErrorAction SilentlyContinue }
-          "Exclusions Defender actives :"
+          "Exclusions Defender actives (paths) :"
           Get-MpPreference | Select-Object -ExpandProperty ExclusionPath
+          "Exclusions Defender actives (procs) :"
+          Get-MpPreference | Select-Object -ExpandProperty ExclusionProcess
 
       - name: Nettoyage des artefacts du run précédent
         # clean: false → le workspace persiste. On retire les sorties non
@@ -157,11 +165,15 @@ jobs:
           python-version: "3.12"
 
       # jq requis par subosito/flutter-action (setup.sh). Préinstallé sur GH hosted.
+      # 0066 : téléchargement vérifié par SHA256 (fail-closed).
       - name: Install jq
         run: |
           $jqDir = Join-Path $env:RUNNER_TEMP "jq"
           New-Item -ItemType Directory -Force -Path $jqDir | Out-Null
-          Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-windows-amd64.exe" -OutFile (Join-Path $jqDir "jq.exe")
+          $jqExe = Join-Path $jqDir "jq.exe"
+          Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-windows-amd64.exe" -OutFile $jqExe
+          $sha = (Get-FileHash -Algorithm SHA256 $jqExe).Hash.ToLower()
+          if ($sha -ne "7451fbbf37feffb9bf262bd97c54f0da558c63f0748e64152dd87b0a07b6d6ab") { throw "SHA256 jq invalide : $sha" }
           Add-Content -Path $env:GITHUB_PATH -Value $jqDir
 
       - name: Install flutter
@@ -179,6 +191,11 @@ jobs:
           flutter doctor -v
           flutter precache --windows
           Invoke-WebRequest -UseBasicParsing -Uri https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip -OutFile windows-x64-release.zip
+          # 0066 : SHA256 figé — le tag amont "main" est mouvant, donc fail-closed.
+          # Si le build casse ici, l'amont a republié : re-télécharger, vérifier,
+          # mettre à jour le hash ci-dessous.
+          $sha = (Get-FileHash -Algorithm SHA256 windows-x64-release.zip).Hash.ToLower()
+          if ($sha -ne "ec8cabf36ee4ff24c8d98de25b00e70781eb03876265aee84d0fe554a110036e") { throw "SHA256 engine invalide : $sha" }
           Expand-Archive -Path windows-x64-release.zip -DestinationPath windows-x64-release
           $engineDir = "$env:RUNNER_TOOL_CACHE\flutter\stable-${{ env.FLUTTER_VERSION }}-x64\bin\cache\artifacts\engine\windows-x64-release"
           New-Item -ItemType Directory -Force -Path $engineDir | Out-Null

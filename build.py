@@ -172,14 +172,18 @@ def generate_build_script_for_docker():
             popd
             # flutter_rust_bridge
             dart pub global activate ffigen --version 5.0.1
-            pushd /tmp && git clone https://github.com/SoLongAndThanksForAllThePizza/flutter_rust_bridge --depth=1 && popd
+            # 0066 : clone épinglé (rev exacte — pas de --depth=1 avec un rev).
+            pushd /tmp && git clone https://github.com/SoLongAndThanksForAllThePizza/flutter_rust_bridge && popd
+            pushd /tmp/flutter_rust_bridge && git checkout b1f67db9f4b552703a9f9dc9572b54bb7fad2517 && popd
             pushd /tmp/flutter_rust_bridge/frb_codegen && cargo install --path . --locked && popd
             pushd flutter && flutter pub get && popd
             ~/.cargo/bin/flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs --dart-output ./flutter/lib/generated_bridge.dart
             # install vcpkg
             pushd /opt
             export VCPKG_ROOT=`pwd`/vcpkg
+            # 0066 : clone épinglé (même rev que VCPKG_COMMIT_ID des workflows CI).
             git clone https://github.com/microsoft/vcpkg
+            pushd vcpkg && git checkout 120deac3062162151622ca4860575a33844ba10b && popd
             vcpkg/bootstrap-vcpkg.sh
             popd
             $VCPKG_ROOT/vcpkg install --x-install-root="$VCPKG_ROOT/installed"
