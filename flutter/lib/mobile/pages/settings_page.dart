@@ -1108,6 +1108,18 @@ void showAbout(OverlayDialogManager dialogManager) {
                     decoration: TextDecoration.underline,
                   )),
             )),
+        InkWell(
+            onTap: () async {
+              await launchUrl(
+                  Uri.parse('https://flowline.my-vth.ch/aide/'));
+            },
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(translate('Help'),
+                  style: TextStyle(
+                    decoration: TextDecoration.underline,
+                  )),
+            )),
       ]),
       actions: [],
     );

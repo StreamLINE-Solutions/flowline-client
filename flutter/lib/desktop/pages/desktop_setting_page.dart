@@ -2448,6 +2448,16 @@ class _AboutState extends State<_About> {
                         .marginSymmetric(vertical: 4.0)),
               SelectionArea(
                   child: Text(license).marginSymmetric(vertical: 4.0)),
+              const SizedBox(
+                height: 8.0,
+              ),
+              InkWell(
+                  onTap: () async => await launchUrl(
+                      Uri.parse('https://flowline.my-vth.ch/aide/')),
+                  child: Text(translate('Help'),
+                          style: const TextStyle(
+                              decoration: TextDecoration.underline))
+                      .marginSymmetric(vertical: 4.0)),
             ],
           ).marginOnly(left: _kContentHMargin)
         ]),

@@ -7,6 +7,7 @@ import 'package:flutter_hbb/mobile/widgets/dialog.dart';
 import 'package:flutter_hbb/models/chat_model.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../common.dart';
 import '../../common/widgets/dialog.dart';
@@ -588,7 +589,18 @@ class ServerInfo extends StatelessWidget {
                           })
                     ])
             ]).marginOnly(left: 40, bottom: 15),
-            ConnectionStateNotification()
+            ConnectionStateNotification(),
+            if (bind.isIncomingOnly())
+              Align(
+                  alignment: Alignment.centerLeft,
+                  child: InkWell(
+                      onTap: () async => await launchUrl(Uri.parse(
+                          'https://flowline.my-vth.ch/aide/utilisateur.html')),
+                      child: Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Text(translate('Help'),
+                              style: const TextStyle(
+                                  decoration: TextDecoration.underline))))),
           ],
         ));
   }
