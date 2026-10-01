@@ -44,8 +44,10 @@ use hbb_common::{
     },
     Stream,
 };
+#[cfg(target_os = "windows")]
+use hbb_common::ResultType;
 #[cfg(any(target_os = "windows", feature = "unix-file-copy-paste"))]
-use hbb_common::{tokio::sync::Mutex as TokioMutex, ResultType};
+use hbb_common::tokio::sync::Mutex as TokioMutex;
 use scrap::CodecFormat;
 use std::{
     collections::HashMap,
@@ -2387,6 +2389,7 @@ impl<T: InvokeUiSession> Remote<T> {
             }
             #[cfg(feature = "unix-file-copy-paste")]
             if crate::is_support_file_copy_paste_num(self.handler.lc.read().unwrap().version) {
+                #[allow(unused_assignments)]
                 let mut out_msgs = vec![];
 
                 #[cfg(target_os = "macos")]

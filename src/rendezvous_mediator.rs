@@ -224,6 +224,7 @@ impl RendezvousMediator {
 
         let mut timer = crate::rustdesk_interval(interval(crate::TIMER_OUT));
         const MIN_REG_TIMEOUT: i64 = 3_000;
+        #[allow(dead_code)]
         const MAX_REG_TIMEOUT: i64 = 30_000;
         let mut reg_timeout = MIN_REG_TIMEOUT;
         const MAX_FAILS1: i64 = 2;

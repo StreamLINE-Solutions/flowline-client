@@ -207,6 +207,7 @@ struct SessionHandler {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[allow(dead_code)]
 enum RenderType {
     PixelBuffer,
     #[cfg(feature = "vram")]

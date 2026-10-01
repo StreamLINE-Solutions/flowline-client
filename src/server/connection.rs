@@ -186,6 +186,7 @@ pub struct ConnInner {
     tx_video: Option<Sender>,
 }
 
+#[allow(dead_code)]
 struct InputMouse {
     msg: MouseEvent,
     conn_id: i32,
@@ -262,6 +263,7 @@ enum ConnAuditPrimaryAuth {
     Click = 1,
     TemporaryPassword = 2,
     PermanentPassword = 3,
+    #[allow(dead_code)]
     SwitchSides = 4,
 }
 
@@ -382,6 +384,7 @@ pub struct Connection {
     delayed_read_dir: Option<(String, bool)>,
     #[cfg(target_os = "macos")]
     retina: Retina,
+    #[allow(dead_code)]
     follow_remote_cursor: bool,
     follow_remote_window: bool,
     multi_ui_session: bool,
@@ -459,6 +462,7 @@ impl Connection {
         server: super::ServerPtrWeak,
         meta: super::ConnectionMeta,
     ) {
+        #[allow(unused_variables)]
         let super::ConnectionMeta {
             control_permissions,
             controlled_context,
@@ -1023,6 +1027,7 @@ impl Connection {
                             #[cfg(target_os = "macos")]
                             conn.retina.set_displays(&_pi.displays);
                         }
+                        #[allow(unused_variables)]
                         Some(message::Union::CursorPosition(pos)) => {
                             #[cfg(not(any(target_os = "android", target_os = "ios")))]
                             {
@@ -1841,7 +1846,7 @@ impl Connection {
             .insert(self.lr.my_id.clone(), self.tx_input.clone());
 
         // Terminal feature is supported on desktop only
-        #[allow(unused_mut)]
+        #[allow(unused_mut, unused_variables)]
         let mut terminal = cfg!(not(any(target_os = "android", target_os = "ios")));
         #[cfg(target_os = "windows")]
         {
@@ -3108,6 +3113,7 @@ impl Connection {
                         }
                         #[cfg(feature = "unix-file-copy-paste")]
                         if crate::is_support_file_copy_paste(&self.lr.version) {
+                            #[allow(unused_assignments)]
                             let mut out_msgs = vec![];
 
                             #[cfg(target_os = "macos")]
@@ -3674,6 +3680,7 @@ impl Connection {
                         self.refresh_video_display(Some(request.display as usize));
                     }
                 }
+                #[allow(unused_variables)]
                 Some(message::Union::TerminalAction(action)) => {
                     #[cfg(not(any(target_os = "android", target_os = "ios")))]
                     allow_err!(self.handle_terminal_action(action).await);

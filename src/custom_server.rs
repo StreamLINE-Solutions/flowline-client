@@ -18,6 +18,7 @@ pub struct CustomServer {
     pub relay: String,
 }
 
+#[allow(dead_code)]
 fn get_custom_server_from_config_string(s: &str) -> ResultType<CustomServer> {
     let tmp: String = s.chars().rev().collect();
     const PK: &[u8; 32] = &[
@@ -36,6 +37,7 @@ fn get_custom_server_from_config_string(s: &str) -> ResultType<CustomServer> {
     }
 }
 
+#[allow(dead_code)]
 pub fn get_custom_server_from_string(s: &str) -> ResultType<CustomServer> {
     let s = if s.to_lowercase().ends_with(".exe.exe") {
         &s[0..s.len() - 8]

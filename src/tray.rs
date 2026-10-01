@@ -51,6 +51,7 @@ fn make_tray() -> hbb_common::ResultType<()> {
     let icon = tray_icon::Icon::from_rgba(icon_rgba, icon_width, icon_height)
         .context("Failed to open icon")?;
 
+    #[allow(unused_mut)]
     let mut event_loop = EventLoopBuilder::new().build();
 
     let tray_menu = Menu::new();
@@ -143,6 +144,7 @@ fn make_tray() -> hbb_common::ResultType<()> {
             }
             // We create the icon once the event loop is actually running
             // to prevent issues like https://github.com/tauri-apps/tray-icon/issues/90
+            #[allow(unused_mut)]
             let mut builder = TrayIconBuilder::new()
                 .with_menu(Box::new(tray_menu.clone()))
                 .with_tooltip(tooltip(0))

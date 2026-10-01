@@ -95,6 +95,7 @@ pub mod client {
     /// cause a focus-change feedback loop (~10 Hz), so `last_grab` debounces
     /// spurious `Wait` events that arrive shortly after a `Run`.
     #[derive(Default)]
+    #[allow(dead_code)]
     struct GrabOwnerState {
         owner: Option<u128>,
         last_grab: Option<std::time::Instant>,
@@ -145,6 +146,7 @@ pub mod client {
         }
     }
 
+    #[allow(dead_code)]
     pub fn start_grab_loop() {
         let mut lock = IS_GRAB_STARTED.lock().unwrap();
         if *lock {
@@ -609,6 +611,7 @@ fn should_block_relative_mouse_shortcut(key: Key, is_press: bool) -> bool {
     false
 }
 
+#[allow(dead_code)]
 fn start_grab_loop() {
     std::env::set_var("KEYBOARD_ONLY", "y");
     #[cfg(any(target_os = "windows", target_os = "macos"))]
@@ -1358,6 +1361,7 @@ fn _map_keyboard_mode(_peer: &str, event: &Event, mut key_event: KeyEvent) -> Op
 }
 
 #[cfg(not(any(target_os = "ios")))]
+#[allow(dead_code)]
 fn try_fill_unicode(_peer: &str, event: &Event, key_event: &KeyEvent, events: &mut Vec<KeyEvent>) {
     match &event.unicode {
         Some(unicode_info) => {

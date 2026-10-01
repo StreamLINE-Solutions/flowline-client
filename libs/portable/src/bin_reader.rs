@@ -121,8 +121,9 @@ impl BinaryReader {
         (parsed, executable)
     }
 
-    #[cfg(linux)]
+    #[cfg(target_os = "linux")]
     pub fn configure_permission(&self, prefix: &Path) {
+        use std::fs::File;
         use std::os::unix::prelude::PermissionsExt;
 
         let exe_path = prefix.join(&self.exe);

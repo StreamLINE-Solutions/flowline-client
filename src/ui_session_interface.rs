@@ -38,6 +38,7 @@ use std::{
     },
     time::SystemTime,
 };
+#[cfg(not(target_os = "android"))]
 use uuid::Uuid;
 
 use crate::client::io_loop::Remote;
@@ -75,6 +76,7 @@ pub struct Session<T: InvokeUiSession> {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 pub struct SessionPermissionConfig {
     pub lc: Arc<RwLock<LoginConfigHandler>>,
     pub server_keyboard_enabled: Arc<RwLock<bool>>,

@@ -24,7 +24,7 @@ pub mod client;
 #[cfg(feature = "module")]
 pub mod module;
 
-pub use crate::{conv::Conversation, enums::*};
+pub use crate::conv::Conversation;
 
 #[cfg(feature = "client")]
 pub use client::Client;

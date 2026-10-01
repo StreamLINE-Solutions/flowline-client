@@ -21,10 +21,12 @@ use std::{
     ops::Deref,
     str::FromStr,
     sync::{
-        mpsc::{self, RecvTimeoutError},
+        mpsc::{self},
         Arc, Mutex, RwLock,
     },
 };
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+use std::sync::mpsc::RecvTimeoutError;
 use uuid::Uuid;
 
 use crate::{
@@ -186,6 +188,7 @@ pub fn get_key_state(key: enigo::Key) -> bool {
 }
 
 impl Client {
+    #[allow(dead_code)]
     const CLIENT_CLIPBOARD_NAME: &'static str = "client-clipboard";
 
     /// Start a new connection.
@@ -1487,18 +1490,19 @@ impl AudioHandler {
         let timeout = None;
         let stream = device.build_output_stream(
             config,
-            move |data: &mut [T], info: &cpal::OutputCallbackInfo| {
+            move |data: &mut [T], _info: &cpal::OutputCallbackInfo| {
                 if !*ready.lock().unwrap() {
                     *ready.lock().unwrap() = true;
                 }
 
                 let mut n = data.len();
                 let mut lock = audio_buffer.lock().unwrap();
+                #[allow(unused_mut)]
                 let mut having = lock.occupied_len();
                 // android two timestamps, one from zero, another not
                 #[cfg(not(target_os = "android"))]
                 if having < n {
-                    let tms = info.timestamp();
+                    let tms = _info.timestamp();
                     let how_long = tms
                         .playback
                         .duration_since(&tms.callback)
@@ -3687,6 +3691,7 @@ pub async fn handle_login_from_ui(
     send_login(lc.clone(), os_username, os_password, hash_password, peer).await;
 }
 
+#[allow(dead_code)]
 async fn send_switch_login_request(
     lc: Arc<RwLock<LoginConfigHandler>>,
     peer: &mut Stream,

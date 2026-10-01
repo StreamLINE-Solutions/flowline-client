@@ -1043,6 +1043,7 @@ pub enum DeployResult {
 }
 
 impl DeployResult {
+    #[allow(dead_code)]
     pub fn message(&self) -> String {
         match self {
             Self::Ok => "".to_owned(),
@@ -1673,6 +1674,7 @@ pub fn get_unlock_pin() -> String {
 }
 
 #[cfg(feature = "flutter")]
+#[allow(unused_variables)]
 pub fn set_unlock_pin(pin: String) -> String {
     #[cfg(any(target_os = "android", target_os = "ios"))]
     return String::default();

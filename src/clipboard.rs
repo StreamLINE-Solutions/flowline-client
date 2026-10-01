@@ -2,7 +2,9 @@
 use arboard::{ClipboardData, ClipboardFormat};
 #[cfg(target_os = "linux")]
 use arboard::{LinuxClipboardKind, SetExtLinux};
+#[allow(unused_imports)]
 use hbb_common::{bail, log, message_proto::*, ResultType};
+#[allow(unused_imports)]
 use std::{
     sync::{Arc, Mutex},
     time::Duration,
@@ -14,9 +16,11 @@ pub const FILE_CLIPBOARD_NAME: &'static str = "file-clipboard";
 pub const CLIPBOARD_INTERVAL: u64 = 333;
 
 // This format is used to store the flag in the clipboard.
+#[allow(dead_code)]
 const RUSTDESK_CLIPBOARD_OWNER_FORMAT: &'static str = "dyn.com.rustdesk.owner";
 
 // Add special format for Excel XML Spreadsheet
+#[allow(dead_code)]
 const CLIPBOARD_FORMAT_EXCEL_XML_SPREADSHEET: &'static str = "XML Spreadsheet";
 
 #[cfg(not(target_os = "android"))]
@@ -569,11 +573,13 @@ pub fn get_current_clipboard_msg(
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
+#[allow(dead_code)]
 pub enum ClipboardSide {
     Host,
     Client,
 }
 
+#[allow(dead_code)]
 impl ClipboardSide {
     // 01: the clipboard is owned by the host
     // 10: the clipboard is owned by the client
@@ -606,10 +612,13 @@ mod proto {
     #[cfg(not(target_os = "android"))]
     use arboard::ClipboardData;
     use hbb_common::{
-        compress::{compress as compress_func, decompress},
+        compress::compress as compress_func,
         message_proto::{Clipboard, ClipboardFormat, Message, MultiClipboards},
     };
+    #[cfg(not(target_os = "android"))]
+    use hbb_common::compress::decompress;
 
+    #[allow(dead_code)]
     fn plain_to_proto(s: String, format: ClipboardFormat) -> Clipboard {
         let compressed = compress_func(s.as_bytes());
         let compress = compressed.len() < s.as_bytes().len();
@@ -670,6 +679,7 @@ mod proto {
         }
     }
 
+    #[allow(dead_code)]
     fn special_to_proto(d: Vec<u8>, s: String) -> Clipboard {
         let compressed = compress_func(&d);
         let compress = compressed.len() < d.len();

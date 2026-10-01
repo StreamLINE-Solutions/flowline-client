@@ -16,9 +16,11 @@ use clipboard::platform::unix::fuse::{init_fuse_context, uninit_fuse_context};
 #[cfg(not(target_os = "android"))]
 use clipboard_master::CallbackResult;
 #[cfg(target_os = "android")]
+#[allow(unused_imports)]
 use hbb_common::config::{keys, option2bool};
 #[cfg(target_os = "android")]
 use std::sync::atomic::{AtomicBool, Ordering};
+#[allow(unused_imports)]
 use std::{
     io,
     sync::mpsc::{channel, RecvTimeoutError},

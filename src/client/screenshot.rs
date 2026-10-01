@@ -1,5 +1,6 @@
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use crate::clipboard::{update_clipboard, ClipboardSide};
+#[allow(unused_imports)]
 use hbb_common::{message_proto::*, ResultType};
 use std::sync::Mutex;
 

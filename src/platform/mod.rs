@@ -92,6 +92,7 @@ pub const PA_SAMPLE_RATE: u32 = 48000;
 
 #[cfg(target_os = "android")]
 #[derive(Default)]
+#[allow(dead_code)]
 pub struct WakeLock(Option<android_wakelock::WakeLock>);
 
 #[cfg(target_os = "android")]

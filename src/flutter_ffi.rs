@@ -23,13 +23,15 @@ use hbb_common::{
 };
 use std::{
     collections::HashMap,
-    path::PathBuf,
     sync::{
         atomic::{AtomicI32, Ordering},
         Arc,
     },
-    time::{Duration, SystemTime},
+    time::SystemTime,
 };
+
+#[cfg(any(target_os = "windows", target_os = "macos"))]
+use std::{path::PathBuf, time::Duration};
 
 pub type SessionID = uuid::Uuid;
 
@@ -1288,6 +1290,7 @@ pub fn main_get_input_source() -> SyncReturn<String> {
     SyncReturn(input_source)
 }
 
+#[allow(unused_variables)]
 pub fn main_set_input_source(session_id: SessionID, value: String) {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
@@ -3087,8 +3090,7 @@ pub fn session_get_common(
 pub mod server_side {
     use hbb_common::{config, log};
     use jni::{
-        errors::{Error as JniError, Result as JniResult},
-        objects::{JClass, JObject, JString},
+        objects::{JClass, JString},
         sys::{jboolean, jstring},
         JNIEnv,
     };
@@ -3182,7 +3184,7 @@ pub mod server_side {
 
     #[no_mangle]
     pub unsafe extern "system" fn Java_ffi_FFI_isServiceClipboardEnabled(
-        env: JNIEnv,
+        _env: JNIEnv,
         _class: JClass,
     ) -> jboolean {
         jboolean::from(crate::server::is_clipboard_service_ok())

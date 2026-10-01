@@ -1062,6 +1062,7 @@ pub fn is_root() -> bool {
     crate::username() == "root"
 }
 
+#[allow(dead_code)]
 fn is_opensuse() -> bool {
     if let Ok(res) = run_cmds("cat /etc/os-release | grep opensuse") {
         if !res.is_empty() {
@@ -1737,7 +1738,10 @@ mod desktop {
             }
             self.display = self
                 .display
-                .replace(&hbb_common::whoami::hostname(), "")
+                .replace(
+                    &hbb_common::whoami::fallible::hostname().unwrap_or_default(),
+                    "",
+                )
                 .replace("localhost", "");
         }
 

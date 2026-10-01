@@ -11,6 +11,7 @@ const OS_CREDENTIAL_LOGIN_BACKOFF_BASE_SECONDS: i64 = 15;
 const OS_CREDENTIAL_LOGIN_BACKOFF_MAX_SECONDS: i64 = 30 * 60;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[allow(dead_code)]
 pub(crate) enum FailureScope {
     Default,
     TerminalOsLogin,

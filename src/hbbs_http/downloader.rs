@@ -42,11 +42,13 @@ struct Downloader {
     total_size: Option<u64>,
     downloaded_size: u64,
     error: Option<String>,
+    #[allow(dead_code)]
     finished: bool,
     tx_cancel: UnboundedSender<()>,
 }
 
 // The caller should check if the file is downloaded successfully and remove the job from the map.
+#[allow(dead_code)]
 pub fn download_file(
     url: String,
     path: Option<PathBuf>,
@@ -160,6 +162,7 @@ pub fn download_file(
 }
 
 #[tokio::main(flavor = "current_thread")]
+#[allow(dead_code)]
 async fn do_download(
     id: &str,
     url: String,

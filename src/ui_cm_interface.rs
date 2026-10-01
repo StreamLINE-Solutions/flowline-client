@@ -11,7 +11,7 @@ use hbb_common::fs::serialize_transfer_job;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use hbb_common::tokio::sync::mpsc::unbounded_channel;
 use hbb_common::{
-    allow_err, bail,
+    allow_err,
     config::{
         keys::{OPTION_ENABLE_PERM_CHANGE_IN_ACCEPT_WINDOW, OPTION_FILE_TRANSFER_MAX_FILES},
         option2bool, Config,
@@ -180,6 +180,7 @@ pub struct ConnectionManager<T: InvokeUiCM> {
     pub ui_handler: T,
 }
 
+#[allow(dead_code)]
 pub trait InvokeUiCM: Send + Clone + 'static + Sized {
     fn add_connection(&self, client: &Client);
 
@@ -1340,6 +1341,7 @@ async fn start_read_job(
 /// but communicates via IPC instead of direct network stream.
 /// When modifying job processing logic, ensure both implementations stay in sync.
 #[cfg(not(any(target_os = "ios")))]
+#[allow(dead_code)]
 async fn handle_read_jobs_tick(
     jobs: &mut Vec<fs::TransferJob>,
     tx: &UnboundedSender<Data>,
@@ -1439,6 +1441,7 @@ async fn handle_read_jobs_tick(
 /// digest via IPC instead of direct network stream.
 /// When modifying initialization or digest logic, ensure both paths stay in sync.
 #[cfg(not(any(target_os = "ios")))]
+#[allow(dead_code)]
 async fn init_read_job_for_cm(
     job: &mut fs::TransferJob,
     tx: &UnboundedSender<Data>,

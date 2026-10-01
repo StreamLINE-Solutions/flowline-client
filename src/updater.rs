@@ -319,6 +319,7 @@ pub fn get_download_file_from_url(url: &str) -> Option<PathBuf> {
 
 /// 0050 : extrait la version depuis l'URL de téléchargement du MSI
 /// (`.../api/update/download/<version>/<fichier>`).
+#[allow(dead_code)]
 pub fn version_from_download_url(download_url: &str) -> Option<&str> {
     let rest = download_url.split_once("/download/")?.1;
     let version = rest.split('/').next()?;
@@ -331,6 +332,7 @@ pub fn version_from_download_url(download_url: &str) -> Option<&str> {
 
 /// 0050 : dérive l'URL du manifeste signé depuis celle du MSI
 /// (`.../api/update/download/<version>/...` → `.../api/update/manifest/<version>`).
+#[allow(dead_code)]
 fn manifest_url_from_download_url(download_url: &str) -> Option<String> {
     let (prefix, _) = download_url.split_once("/download/")?;
     let version = version_from_download_url(download_url)?;
@@ -340,6 +342,7 @@ fn manifest_url_from_download_url(download_url: &str) -> Option<String> {
 /// 0050 : récupère le manifeste signé servi par l'API et le vérifie contre le
 /// fichier téléchargé (key_id/clé embarquée, signature Ed25519, version, nom,
 /// taille, SHA-256). Toute anomalie => erreur (l'appelant refuse et supprime).
+#[allow(dead_code)]
 pub fn fetch_and_verify_update_manifest(
     download_url: &str,
     version: &str,
@@ -368,6 +371,7 @@ pub fn fetch_and_verify_update_manifest(
 
 /// 0050 : vérifie un fichier déjà téléchargé (chemin manuel de mise à jour,
 /// `update-me` côté UI) avant de lancer l'installation.
+#[allow(dead_code)]
 pub fn verify_downloaded_update(download_url: &str, file_path: &Path) -> ResultType<()> {
     let version = version_from_download_url(download_url)
         .ok_or_else(|| anyhow::anyhow!("version introuvable dans l'URL de mise à jour"))?;

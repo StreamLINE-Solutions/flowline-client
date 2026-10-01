@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use crate::ipc::{Connection, ConnectionTmpl};
 #[cfg(all(windows, not(feature = "flutter")))]
 use hbb_common::sha2::{Digest, Sha256};

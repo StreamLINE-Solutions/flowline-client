@@ -248,3 +248,9 @@ rpath = true
 
 [profile.dev]
 debug = 1
+
+[lints.rust.unexpected_cfgs]
+# La macro `msg_send!` du crate `objc` (non maintenu) teste `feature = "cargo-clippy"` ;
+# le cfg s'évalue dans le crate appelant → on le déclare pour éviter 82 warnings mac.
+level = "warn"
+check-cfg = ['cfg(feature, values("cargo-clippy"))']

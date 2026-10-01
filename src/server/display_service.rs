@@ -293,6 +293,7 @@ pub(super) fn get_original_resolution(
     .into()
 }
 
+#[allow(dead_code)]
 pub(super) fn get_sync_displays() -> Vec<DisplayInfo> {
     SYNC_DISPLAYS.lock().unwrap().displays.clone()
 }

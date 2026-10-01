@@ -229,6 +229,7 @@ fn create_http_client_with_url_(
     client
 }
 
+#[allow(dead_code)]
 pub async fn create_http_client_async_with_url(url: &str) -> AsyncClient {
     let proxy_conf = Config::get_socks();
     let tls_url = get_url_for_tls(url, &proxy_conf);
@@ -248,6 +249,7 @@ pub async fn create_http_client_async_with_url(url: &str) -> AsyncClient {
 }
 
 #[async_recursion]
+#[allow(dead_code)]
 async fn create_http_client_async_with_url_(
     url: &str,
     tls_url: &str,

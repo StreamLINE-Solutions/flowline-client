@@ -534,11 +534,7 @@ impl FuseServer {
         size: u32,
     ) -> Result<Vec<u8>, std::io::Error> {
         let request_stream_id = rand::random();
-        let cb_requested = unsafe {
-            // convert `size` from u32 to i32
-            // yet with same bit representation
-            std::mem::transmute::<u32, i32>(size)
-        };
+        let cb_requested = size as i32;
 
         let (n_position_high, n_position_low) =
             ((offset >> 32) as i32, (offset & (u32::MAX as i64)) as i32);

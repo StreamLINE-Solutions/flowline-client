@@ -316,7 +316,8 @@ pub mod client {
             conn: Arc<SyncConnection>,
             session: Path<'static>,
             stream: PwStreamInfo,
-            resolution: (usize, usize),
+#[allow(dead_code)]
+        resolution: (usize, usize),
         ) -> ResultType<Self> {
             // https://github.com/rustdesk/rustdesk/pull/9019#issuecomment-2295252388
             // There may be a bug in Rdp input on Gnome util Ubuntu 24.04 (Gnome 46)

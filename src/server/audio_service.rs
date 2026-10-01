@@ -59,6 +59,7 @@ pub fn set_voice_call_input_device(device: Option<String>, set_if_present: bool)
 }
 
 #[inline]
+#[allow(dead_code)]
 fn get_audio_input() -> String {
     VOICE_CALL_INPUT_DEVICE
         .lock()
