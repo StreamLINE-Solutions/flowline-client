@@ -24,8 +24,11 @@ use std::{
     ops::{Deref, DerefMut},
     sync::atomic::{AtomicBool, Ordering},
     thread,
-    time::{self, Duration, Instant},
+    time::{self, Instant},
 };
+
+#[cfg(not(target_os = "windows"))]
+use std::time::Duration;
 
 #[cfg(windows)]
 use winapi::um::winuser::WHEEL_DELTA;
