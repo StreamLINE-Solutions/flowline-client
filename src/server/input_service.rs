@@ -490,10 +490,6 @@ pub(crate) fn clear_relative_mouse_active(conn: i32) {
 
 static EXITING: AtomicBool = AtomicBool::new(false);
 
-const MOUSE_MOVE_PROTECTION_TIMEOUT: Duration = Duration::from_millis(1_000);
-// Actual diff of (x,y) is (1,1) here. But 5 may be tolerant.
-const MOUSE_ACTIVE_DISTANCE: i32 = 5;
-
 static RECORD_CURSOR_POS_RUNNING: AtomicBool = AtomicBool::new(false);
 
 // https://github.com/rustdesk/rustdesk/issues/9729

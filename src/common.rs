@@ -39,7 +39,7 @@ use hbb_common::{
 
 use crate::{
     hbbs_http::{create_http_client_async, get_url_for_tls},
-    ui_interface::{get_api_server as ui_get_api_server, get_option, is_installed, set_option},
+    ui_interface::{get_api_server as ui_get_api_server, get_option, set_option},
 };
 
 #[derive(Debug, Eq, PartialEq)]
@@ -857,7 +857,7 @@ pub fn hostname() -> String {
 /// `manufacturer()` ni `model()` (API inexistante sur tous les OS) → lecture
 /// plateforme par plateforme, sans dépendance supplémentaire.
 fn device_manufacturer_model() -> (String, String) {
-    #[allow(unused_mut)]
+    #[allow(unused_mut, unused_assignments)]
     let mut out = (String::new(), String::new());
     #[cfg(target_os = "windows")]
     {
