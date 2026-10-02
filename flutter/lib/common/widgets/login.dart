@@ -447,14 +447,10 @@ class LoginWidgetUserPass extends StatelessWidget {
             ])),
             const SizedBox(height: 6.0),
             InkWell(
-              onTap: () {
-                const url = 'https://www.flowline.support/#tarifs';
-                canLaunchUrlString(url).then((can) {
-                  if (can) {
-                    launchUrlString(url);
-                  }
-                });
-              },
+              onTap: () => launchUrl(
+                Uri.parse('https://www.flowline.support/#tarifs'),
+                mode: LaunchMode.externalApplication,
+              ),
               child: Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
