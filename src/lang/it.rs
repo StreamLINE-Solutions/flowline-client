@@ -505,6 +505,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Exit", "Esci da FlowLINE"),
         ("Open", "Apri FlowLINE"),
         ("logout_tip", "Vuoi disconnetterti?"),
+        ("no_account_tip", "Non hai ancora un account? Vedi i prezzi"),
         ("Service", "Servizio"),
         ("Start", "Avvia"),
         ("Stop", "Ferma"),

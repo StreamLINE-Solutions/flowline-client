@@ -506,6 +506,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Exit", "Quitter"),
         ("Open", "Ouvrir"),
         ("logout_tip", "Voulez-vous vraiment vous déconnecter ?"),
+        ("no_account_tip", "Pas encore de compte ? Voir les tarifs"),
         ("Service", "Service"),
         ("Start", "Démarrer"),
         ("Stop", "Arrêter"),

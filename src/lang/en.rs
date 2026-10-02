@@ -177,6 +177,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("accept_and_elevate_btn_tooltip", "Accept the connection and elevate UAC permissions."),
         ("clipboard_wait_response_timeout_tip", "Timed out waiting for copy response."),
         ("logout_tip", "Are you sure you want to log out?"),
+        ("no_account_tip", "No account yet? See pricing"),
         ("exceed_max_devices", "You have reached the maximum number of managed devices."),
         ("Change Password", "Change password"),
         ("Refresh Password", "Refresh password"),
