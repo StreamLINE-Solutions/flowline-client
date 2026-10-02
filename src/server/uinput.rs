@@ -1104,6 +1104,9 @@ mod mouce {
         fn write(fd: c_int, buf: *mut InputEvent, count: usize) -> c_long;
     }
 
+    // Variantes upstream pour boutons souris etendus, non mappees par handle_mouse
+    // (Left/Middle/Right seulement) — conservees pour le suivi upstream (0080).
+    #[allow(dead_code)]
     #[derive(Debug, Copy, Clone)]
     pub enum MouseButton {
         Left,
@@ -1116,6 +1119,8 @@ mod mouce {
         Task,
     }
 
+    // Idem : Right/Left non produits par scroll_wheel (Up/Down seulement).
+    #[allow(dead_code)]
     #[derive(Debug, Copy, Clone)]
     pub enum ScrollDirection {
         Up,

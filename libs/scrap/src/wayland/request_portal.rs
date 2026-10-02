@@ -5,6 +5,8 @@ use dbus;
 use dbus::arg;
 use dbus::blocking;
 
+// API D-Bus generee, non utilisee (upstream non plus) — conservee (0080).
+#[allow(dead_code)]
 pub trait OrgFreedesktopPortalRequest {
   fn close(&self) -> Result<(), dbus::Error>;
 }

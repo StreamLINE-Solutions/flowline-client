@@ -23,6 +23,8 @@ pub trait OrgFreedesktopPortalScreenCast {
         session_handle: dbus::Path,
         options: arg::PropMap,
     ) -> Result<arg::OwnedFd, dbus::Error>;
+    // Non utilisee (upstream non plus) — API D-Bus generee, conservee (0080).
+    #[allow(dead_code)]
     fn available_source_types(&self) -> Result<u32, dbus::Error>;
     fn available_cursor_modes(&self) -> Result<u32, dbus::Error>;
     fn version(&self) -> Result<u32, dbus::Error>;

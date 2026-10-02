@@ -1976,6 +1976,9 @@ mod desktop {
     }
 }
 
+// Garde RAII : le champ n'est jamais lu, c'est son Drop qui maintient l'eveil.
+// Ne pas supprimer (0080) — un nettoyage "code mort" casserait le wake lock.
+#[allow(dead_code)]
 pub struct WakeLock(Option<keepawake::AwakeHandle>);
 
 impl WakeLock {
