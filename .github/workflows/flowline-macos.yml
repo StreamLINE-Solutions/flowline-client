@@ -21,6 +21,11 @@ env:
   # devient illisible (E0463) et le build aarch64 échoue. Strip désactivé en CI
   # (bug Apple ld/strip) ; cf. ticket 0081. À réévaluer après mise à jour Xcode.
   CARGO_PROFILE_RELEASE_STRIP: "none"
+  # bindgen doit charger le libclang de Xcode, pas celui de Homebrew LLVM :
+  # `llvm-config` est dans le PATH du runner et clang-sys découvre ainsi
+  # /opt/homebrew/opt/llvm (23.x). Avec ce libclang, les bindings x86_64
+  # cross-compilés sont corrompus (structs cfg vpx/aom rendues opaques → E0609).
+  LIBCLANG_PATH: "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   # FlowLINE white-label : serveurs de rendez-vous (séparés par virgule) + clé
   # publique. Déployer vers une autre infra = surcharger ces 2 vars. Défaut falcon.
@@ -181,13 +186,15 @@ jobs:
           RUSTDESK_RS_PUB_KEY: ${{ env.RUSTDESK_RS_PUB_KEY }}
           FLOWLINE_API_SERVER: ${{ env.FLOWLINE_API_SERVER }}
         run: |
-          if [ "${{ matrix.job.target }}" = "aarch64-apple-darwin" ]; then
-            MIN_MACOS_VERSION="12.3"
-            sed -i -e "s/MACOSX_DEPLOYMENT_TARGET\=[0-9]*.[0-9]*/MACOSX_DEPLOYMENT_TARGET=${MIN_MACOS_VERSION}/" build.py
-            sed -i -e "s/platform :osx, '.*'/platform :osx, '${MIN_MACOS_VERSION}'/" flutter/macos/Podfile
-            sed -i -e "s/osx_minimum_system_version = \"[0-9]*.[0-9]*\"/osx_minimum_system_version = \"${MIN_MACOS_VERSION}\"/" Cargo.toml
-            sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
-          fi
+          # Xcode 27 refuse tout deployment target < 12.0 (plage 12.0–27.0) :
+          # les deux arches sont alignées sur 12.3 (min x86_64 relevé de 10.14).
+          # Les cibles Pods (podspecs Flutter à 10.14) sont forcées à 12.3 par
+          # le post_install du Podfile. Cf. ticket 0081.
+          MIN_MACOS_VERSION="12.3"
+          sed -i -e "s/MACOSX_DEPLOYMENT_TARGET\=[0-9]*.[0-9]*/MACOSX_DEPLOYMENT_TARGET=${MIN_MACOS_VERSION}/" build.py
+          sed -i -e "s/platform :osx, '.*'/platform :osx, '${MIN_MACOS_VERSION}'/" flutter/macos/Podfile
+          sed -i -e "s/osx_minimum_system_version = \"[0-9]*.[0-9]*\"/osx_minimum_system_version = \"${MIN_MACOS_VERSION}\"/" Cargo.toml
+          sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
 
       - name: Codesign ad hoc (technicien)
