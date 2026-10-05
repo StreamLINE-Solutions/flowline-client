@@ -40,6 +40,11 @@ jobs:
     name: ${{ matrix.job.target }}
     # Le bridge (flutter_rust_bridge) est commité : plus de job generate-bridge.
     runs-on: ${{ matrix.job.os }}
+    env:
+      # Signature Developer ID + notarisation activées dès que les 6 secrets
+      # existent ; sinon signature ad hoc (comportement historique, DMG non notarisé).
+      HAS_SIGNING: ${{ secrets.BUILD_CERTIFICATE_BASE64 != '' && secrets.P12_PASSWORD != '' && secrets.KEYCHAIN_PASSWORD != '' && secrets.ASC_KEY_ID != '' && secrets.ASC_ISSUER_ID != '' && secrets.ASC_API_KEY_P8 != '' }}
+      SIGN_IDENTITY: "Developer ID Application: StreamLINE-Solutions Sarl (DSGXA9V62W)"
     strategy:
       fail-fast: false
       matrix:
@@ -179,6 +184,24 @@ jobs:
           fi
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg_triplet }}-rel-out.log" || true
 
+      - name: Import Developer ID certificate
+        # .p12 importé dans un keychain temporaire (supprimé par le Cleanup en fin de job).
+        if: env.HAS_SIGNING == 'true'
+        env:
+          CERTIFICATE_PATH: ${{ runner.temp }}/build_certificate.p12
+          KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          rm -f "$CERTIFICATE_PATH"
+
       - name: Build FlowLINE (technicien)
         env:
           FLOWLINE_QUICK_SUPPORT: "0"
@@ -197,11 +220,31 @@ jobs:
           sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
 
-      - name: Codesign ad hoc (technicien)
+      - name: Codesign Developer ID (technicien)
+        # Signature inside-out : frameworks/dylibs, puis binaires, puis l'app avec
+        # entitlements (hardened runtime + timestamp requis pour la notarisation).
+        # --keychain explicite : sur ce runner, codesign ne résout pas l'identité via
+        # la search list (errSecInternalComponent sinon).
+        if: env.HAS_SIGNING == 'true'
+        env:
+          APP: ./flutter/build/macos/Build/Products/Release/FlowLINE.app
+          KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
+        run: |
+          for item in "$APP"/Contents/Frameworks/*.framework "$APP"/Contents/Frameworks/*.dylib; do
+            codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$item"
+          done
+          codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$APP/Contents/MacOS/service"
+          codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" \
+            --entitlements flutter/macos/Runner/Release.entitlements "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          codesign -dv --verbose=4 "$APP" 2>&1 | grep -E "Authority|TeamIdentifier"
+
+      - name: Codesign ad hoc (technicien, sans secrets)
         # Signature uniforme du bundle : sans elle, binaire principal ad hoc + framework
         # FlutterMacOS signé Google → crash dyld arm64 "different Team IDs" + Gatekeeper
         # « endommagée ». Ad hoc = non notarisé : l'utilisateur passe par clic droit → Ouvrir.
         # (Notarisation Developer ID : voir notes/FlowLINE-macOS-signature-analyse.md.)
+        if: env.HAS_SIGNING != 'true'
         env:
           APP: ./flutter/build/macos/Build/Products/Release/FlowLINE.app
         run: |
@@ -209,11 +252,30 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$APP"
 
       - name: create dmg (technicien)
+        # --skip-jenkins : pas d'AppleScript Finder (TCC Automation indisponible sur le
+        # runner → « Délai dépassé pour un AppleEvent » -1712). Pas de mise en page custom.
         run: |
           CREATE_DMG="$(command -v create-dmg)"
           CREATE_DMG="$(readlink -f "$CREATE_DMG")"
           sed -i -e 's/MAXIMUM_UNMOUNTING_ATTEMPTS=3/MAXIMUM_UNMOUNTING_ATTEMPTS=7/' "$CREATE_DMG"
-          create-dmg --icon "FlowLINE.app" 200 190 --hide-extension "FlowLINE.app" --window-size 800 400 --app-drop-link 600 185 "flowline-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg" ./flutter/build/macos/Build/Products/Release/FlowLINE.app
+          create-dmg --skip-jenkins --icon "FlowLINE.app" 200 190 --hide-extension "FlowLINE.app" --window-size 800 400 --app-drop-link 600 185 "flowline-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg" ./flutter/build/macos/Build/Products/Release/FlowLINE.app
+
+      - name: Sign, notarize and staple dmg (technicien)
+        if: env.HAS_SIGNING == 'true'
+        env:
+          KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
+          DMG: flowline-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          printf '%s' "$ASC_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+          codesign --force --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$DMG"
+          xcrun notarytool submit "$DMG" --key "$RUNNER_TEMP/AuthKey.p8" \
+            --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
+          spctl --assess --type open --context context:primary-signature -v "$DMG"
 
       - name: Build FlowLINE Support (QuickSupport)
         # Variante Support : feature cargo `quick-support` (incoming-only, UI réduite) —
@@ -227,8 +289,24 @@ jobs:
         run: |
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
 
-      - name: Codesign ad hoc (Support)
+      - name: Codesign Developer ID (Support)
         # Rebuild Support écrase le même chemin de sortie → re-signature obligatoire.
+        if: env.HAS_SIGNING == 'true'
+        env:
+          APP: ./flutter/build/macos/Build/Products/Release/FlowLINE.app
+          KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
+        run: |
+          for item in "$APP"/Contents/Frameworks/*.framework "$APP"/Contents/Frameworks/*.dylib; do
+            codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$item"
+          done
+          codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$APP/Contents/MacOS/service"
+          codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" \
+            --entitlements flutter/macos/Runner/Release.entitlements "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+
+      - name: Codesign ad hoc (Support, sans secrets)
+        # Rebuild Support écrase le même chemin de sortie → re-signature obligatoire.
+        if: env.HAS_SIGNING != 'true'
         env:
           APP: ./flutter/build/macos/Build/Products/Release/FlowLINE.app
         run: |
@@ -240,7 +318,24 @@ jobs:
           CREATE_DMG="$(command -v create-dmg)"
           CREATE_DMG="$(readlink -f "$CREATE_DMG")"
           sed -i -e 's/MAXIMUM_UNMOUNTING_ATTEMPTS=3/MAXIMUM_UNMOUNTING_ATTEMPTS=7/' "$CREATE_DMG"
-          create-dmg --icon "FlowLINE.app" 200 190 --hide-extension "FlowLINE.app" --window-size 800 400 --app-drop-link 600 185 "flowline-support-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg" ./flutter/build/macos/Build/Products/Release/FlowLINE.app
+          create-dmg --skip-jenkins --icon "FlowLINE.app" 200 190 --hide-extension "FlowLINE.app" --window-size 800 400 --app-drop-link 600 185 "flowline-support-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg" ./flutter/build/macos/Build/Products/Release/FlowLINE.app
+
+      - name: Sign, notarize and staple dmg (Support)
+        if: env.HAS_SIGNING == 'true'
+        env:
+          KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
+          DMG: flowline-support-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          printf '%s' "$ASC_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+          codesign --force --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$DMG"
+          xcrun notarytool submit "$DMG" --key "$RUNNER_TEMP/AuthKey.p8" \
+            --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
+          spctl --assess --type open --context context:primary-signature -v "$DMG"
 
       - name: Upload unsigned macOS app
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -255,6 +350,15 @@ jobs:
           name: flowline-support-unsigned-macos-${{ matrix.job.arch }}-${{ env.VERSION }}
           path: "flowline-support-${{ env.VERSION }}-${{ matrix.job.arch }}.dmg"
           retention-days: 30
+
+      - name: Cleanup signing keychain (runner self-hosté)
+        # Le runner persiste entre les jobs : ne jamais laisser le keychain temporaire,
+        # le .p12 ou la clé API sur disque.
+        if: always() && env.HAS_SIGNING == 'true'
+        shell: bash
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+          rm -f "$RUNNER_TEMP/build_certificate.p12" "$RUNNER_TEMP/AuthKey.p8"
 
       - name: Cleanup git credentials (PAT hors fichier temporaire)
         # Audit 25/09 (0065) : runner self-hosted persistant — ne pas laisser le
