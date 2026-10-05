@@ -131,6 +131,13 @@ def make_parser():
         help='Build with unix file copy paste feature'
     )
     parser.add_argument(
+        '--mac-target',
+        dest='mac_target',
+        default='',
+        help='macOS only: Rust target triple for cross-build (e.g. x86_64-apple-darwin). '
+             'Default: host architecture.'
+    )
+    parser.add_argument(
         '--skip-cargo',
         action='store_true',
         help='Skip cargo build process, only flutter version + Linux supported currently'
@@ -404,22 +411,40 @@ def build_deb_from_folder(version, binary_folder):
     os.chdir("..")
 
 
-def build_flutter_dmg(version, features):
+def build_flutter_dmg(version, features, mac_target=''):
+    # mac_target : triple Rust explicite (ex. 'x86_64-apple-darwin') pour le cross-build
+    # depuis un Mac Apple Silicon. Vide -> arch hôte. CARGO_TARGET_DIR (cache persistant
+    # du runner) est respecté ; les sorties restent copiées dans target/release/ car le
+    # projet Xcode référence ../../target/release/liblibrustdesk.dylib en dur.
+    cargo_root = os.environ.get('CARGO_TARGET_DIR') or 'target'
+    if mac_target:
+        cargo_build_dir = os.path.abspath(os.path.join(cargo_root, mac_target, 'release'))
+        cargo_target_arg = f' --target {mac_target}'
+    else:
+        cargo_build_dir = os.path.abspath(os.path.join(cargo_root, 'release'))
+        cargo_target_arg = ''
     if not skip_cargo:
         # set minimum osx build target, now is 10.14, which is the same as the flutter xcode project
         system2(
-            f'MACOSX_DEPLOYMENT_TARGET=10.14 cargo build --locked --features {features} --release')
-    # copy dylib
-    system2(
-        "cp target/release/liblibrustdesk.dylib target/release/librustdesk.dylib")
+            f'MACOSX_DEPLOYMENT_TARGET=10.14 cargo build --locked --features {features} --release{cargo_target_arg}')
+    # copy dylib (le projet Xcode lit target/release/liblibrustdesk.dylib)
+    system2('mkdir -p target/release')
+    if os.path.abspath('target/release') != cargo_build_dir:
+        system2(f'cp {cargo_build_dir}/liblibrustdesk.dylib target/release/liblibrustdesk.dylib')
+    system2(f'cp {cargo_build_dir}/liblibrustdesk.dylib target/release/librustdesk.dylib')
     os.chdir('flutter')
-    # cargo builds a single-arch dylib for the host; restrict Xcode to the same arch
+    # cargo builds a single-arch dylib for the target; restrict Xcode to the same arch
     # so the universal-by-default ARCHS_STANDARD doesn't try to link a missing slice.
     # FLUTTER_XCODE_* env vars are forwarded to xcodebuild as build settings.
-    mac_arch = 'arm64' if platform.machine().lower() in ('arm64', 'aarch64') else 'x86_64'
+    if mac_target == 'x86_64-apple-darwin':
+        mac_arch = 'x86_64'
+    elif mac_target == 'aarch64-apple-darwin':
+        mac_arch = 'arm64'
+    else:
+        mac_arch = 'arm64' if platform.machine().lower() in ('arm64', 'aarch64') else 'x86_64'
     system2(
         f'FLUTTER_XCODE_ARCHS={mac_arch} FLUTTER_XCODE_ONLY_ACTIVE_ARCH=YES flutter build macos --release')
-    system2('cp -rf ../target/release/service ./build/macos/Build/Products/Release/FlowLINE.app/Contents/MacOS/')
+    system2(f'cp -rf {cargo_build_dir}/service ./build/macos/Build/Products/Release/FlowLINE.app/Contents/MacOS/')
     # Signature adhoc du binaire service injecté : sans codesign, xcodebuild refuse
     # le bundle ("code object is not signed at all" -> BUILD FAILED au 2e build).
     system2('codesign --force --sign - ./build/macos/Build/Products/Release/FlowLINE.app/Contents/MacOS/service')
@@ -562,7 +587,7 @@ def main():
     else:
         if flutter:
             if osx:
-                build_flutter_dmg(version, features)
+                build_flutter_dmg(version, features, args.mac_target)
                 pass
             else:
                 # system2(

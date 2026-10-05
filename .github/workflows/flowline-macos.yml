@@ -2,8 +2,8 @@ name: Build FlowLINE macOS
 
 on:
   # Déclenchement manuel uniquement (process release).
-  # Depuis 0081 : arm64 sur runner self-hosted Mac mini (0 min GitHub) ;
-  # x86_64 reste sur runner GitHub-hosted facturé.
+  # Depuis 0081 : arm64 ET x86_64 (cross-compilé) sur runner self-hosted
+  # Mac mini (0 min GitHub, caches cargo/vcpkg locaux persistants).
   workflow_dispatch:
 
 # F14 (audit 21/09) : moindre privilège — le GITHUB_TOKEN du run ne peut que lire.
@@ -34,10 +34,10 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          - { target: x86_64-apple-darwin, os: macos-15-intel, extra-build-args: "", arch: x86_64 }
-          # 0081 : aarch64 sur runner self-hosted (Mac mini M6, Venthone) — 0 min GitHub.
-          # x86_64 reste GitHub-hosted (décision : pas de runner Intel dédié pour l'instant).
-          - { target: aarch64-apple-darwin, os: [self-hosted, macOS, ARM64, mac-mini], extra-build-args: "--screencapturekit", arch: aarch64 }
+          # 0081 : les DEUX arches sur runner self-hosted (Mac mini M6, Venthone) — 0 min GitHub.
+          # x86_64 est cross-compilé depuis arm64 (cargo --target + FLUTTER_XCODE_ARCHS).
+          - { target: x86_64-apple-darwin, os: [self-hosted, macOS, ARM64, mac-mini], extra-build-args: "--mac-target x86_64-apple-darwin", arch: x86_64, vcpkg_triplet: x64-osx }
+          - { target: aarch64-apple-darwin, os: [self-hosted, macOS, ARM64, mac-mini], extra-build-args: "--mac-target aarch64-apple-darwin --screencapturekit", arch: aarch64, vcpkg_triplet: arm64-osx }
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -45,6 +45,16 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Setup local build cache (runner persistant)
+        # Runner self-hosté : cache cargo persistant hors workspace (survit au
+        # `git clean` du checkout) → builds incrémentaux. Sur GitHub-hosted,
+        # RUNNER_TOOL_CACHE est éphémère (pas de gain, pas de casse).
+        shell: bash
+        run: |
+          CACHE_ROOT="${RUNNER_TOOL_CACHE:-$HOME/.cache}/flowline-cache"
+          mkdir -p "$CACHE_ROOT"
+          echo "CARGO_TARGET_DIR=$CACHE_ROOT/cargo" >> "$GITHUB_ENV"
 
       - name: Checkout source code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,6 +102,7 @@ jobs:
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
 
       - name: Patch flutter
         run: |
@@ -114,20 +125,30 @@ jobs:
           components: "rustfmt"
 
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        # Self-hosted : cache cargo local persistant (CARGO_TARGET_DIR) — inutile
+        # d'uploader target/ vers le cache GitHub. Conservé pour le fallback hosted.
+        if: runner.environment != 'self-hosted'
         with:
-          prefix-key: ${{ matrix.job.os }}
+          prefix-key: ${{ matrix.job.target }}
           # cache-bin: rust-cache nettoie ~/.cargo/bin au post-job et supprime
           # rustup/cargo-ndk installés pendant le run (cassait cargo en local).
           cache-bin: false
 
-      - name: Setup vcpkg with Github Actions binary cache
+      - name: Setup vcpkg
         uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11
         with:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-          doNotCache: false
+          # Cache binaire géré localement dans l'étape suivante (persistant sur le
+          # runner self-hosted, partagé entre arches) — plus de cache GitHub.
+          doNotCache: true
 
       - name: Install vcpkg dependencies
+        env:
+          VCPKG_DEFAULT_TRIPLET: ${{ matrix.job.vcpkg_triplet }}
         run: |
+          CACHE_ROOT="${RUNNER_TOOL_CACHE:-$HOME/.cache}/flowline-cache"
+          export VCPKG_BINARY_SOURCES="clear;files,$CACHE_ROOT/vcpkg-bincache,readwrite"
+          mkdir -p "$CACHE_ROOT/vcpkg-bincache"
           if ! $VCPKG_ROOT/vcpkg \
             install \
             --x-install-root="$VCPKG_ROOT/installed"; then
@@ -140,7 +161,7 @@ jobs:
             done
             exit 1
           fi
-          head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.target }}-rel-out.log" || true
+          head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg_triplet }}-rel-out.log" || true
 
       - name: Build FlowLINE (technicien)
         env:
