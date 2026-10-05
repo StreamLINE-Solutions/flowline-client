@@ -120,7 +120,10 @@ jobs:
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          cache: true
+          # cache: false — le cache embarque actions/cache@v3 (Node 20, déprécié) et
+          # re-transfère ~Go de SDK/pub-cache à chaque job : redondant sur runner
+          # self-hosté où le tool cache Flutter et ~/.pub-cache sont déjà persistants.
+          cache: false
 
       - name: Patch flutter
         run: |
