@@ -238,7 +238,7 @@ jobs:
       - name: Upload FlowLINE artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: flowline-unsigned-linux-x64-${{ env.VERSION }}
+          name: flowline-linux-x64-${{ env.VERSION }}
           path: |
             flowline-technicien.deb
             flowline-technicien.AppImage
@@ -247,7 +247,7 @@ jobs:
       - name: Upload FlowLINE Support artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: flowline-support-unsigned-linux-x64-${{ env.VERSION }}
+          name: flowline-support-linux-x64-${{ env.VERSION }}
           path: |
             flowline-support.deb
             flowline-support.AppImage

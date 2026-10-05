@@ -326,14 +326,14 @@ jobs:
       - name: Upload FlowLINE artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: flowline-unsigned-windows-x64-${{ env.VERSION }}
+          name: flowline-windows-x64-${{ env.VERSION }}
           path: rustdesk
           retention-days: 30
 
       - name: Upload FlowLINE Support artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: flowline-support-unsigned-windows-x64-${{ env.VERSION }}
+          name: flowline-support-windows-x64-${{ env.VERSION }}
           path: rustdesk-support
           retention-days: 30
 
