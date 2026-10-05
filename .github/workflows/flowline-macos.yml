@@ -16,6 +16,11 @@ env:
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   VERSION: "1.4.21"
+  # Xcode 27 : `strip = true` (profil release) produit des Mach-O corrompus
+  # (« mis-aligned LINKEDIT string pool ») — la dylib proc-macro cidre_macros
+  # devient illisible (E0463) et le build aarch64 échoue. Strip désactivé en CI
+  # (bug Apple ld/strip) ; cf. ticket 0081. À réévaluer après mise à jour Xcode.
+  CARGO_PROFILE_RELEASE_STRIP: "none"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   # FlowLINE white-label : serveurs de rendez-vous (séparés par virgule) + clé
   # publique. Déployer vers une autre infra = surcharger ces 2 vars. Défaut falcon.

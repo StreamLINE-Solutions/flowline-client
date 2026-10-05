@@ -85,7 +85,7 @@
     {
       "name": "ffmpeg",
       "host": false,
-      "platform": "((android | ios | (linux & arm32)) & static)"
+      "platform": "((android | ios | osx | (linux & arm32)) & static)"
     }
   ],
   "vcpkg-configuration": {

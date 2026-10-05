@@ -44,7 +44,10 @@ use hbb_common::{
     },
     Stream,
 };
-#[cfg(target_os = "windows")]
+#[cfg(any(
+    target_os = "windows",
+    all(target_os = "macos", feature = "unix-file-copy-paste")
+))]
 use hbb_common::ResultType;
 #[cfg(any(target_os = "windows", feature = "unix-file-copy-paste"))]
 use hbb_common::tokio::sync::Mutex as TokioMutex;
