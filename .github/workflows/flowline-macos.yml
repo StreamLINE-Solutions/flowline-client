@@ -1,8 +1,9 @@
 name: Build FlowLINE macOS
 
 on:
-  # macOS build désactivé pour le moment (runners macOS facturés).
-  # Réactiver en ré-ajoutant: push: branches: [main]
+  # Déclenchement manuel uniquement (process release).
+  # Depuis 0081 : arm64 sur runner self-hosted Mac mini (0 min GitHub) ;
+  # x86_64 reste sur runner GitHub-hosted facturé.
   workflow_dispatch:
 
 # F14 (audit 21/09) : moindre privilège — le GITHUB_TOKEN du run ne peut que lire.
@@ -34,7 +35,9 @@ jobs:
       matrix:
         job:
           - { target: x86_64-apple-darwin, os: macos-15-intel, extra-build-args: "", arch: x86_64 }
-          - { target: aarch64-apple-darwin, os: macos-14, extra-build-args: "--screencapturekit", arch: aarch64 }
+          # 0081 : aarch64 sur runner self-hosted (Mac mini M6, Venthone) — 0 min GitHub.
+          # x86_64 reste GitHub-hosted (décision : pas de runner Intel dédié pour l'instant).
+          - { target: aarch64-apple-darwin, os: [self-hosted, macOS, ARM64, mac-mini], extra-build-args: "--screencapturekit", arch: aarch64 }
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
