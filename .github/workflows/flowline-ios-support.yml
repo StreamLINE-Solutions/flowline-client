@@ -86,6 +86,9 @@ jobs:
 
       - name: Build Rust (iOS arm64, support)
         run: |
+          # bindgen cross-compile : clang a besoin du sysroot du SDK iOS pour trouver
+          # <stdint.h> (sinon « unknown type name 'uint8_t' » dans hwcodec).
+          export BINDGEN_EXTRA_CLANG_ARGS_aarch64_apple_ios="--sysroot=$(xcrun --sdk iphoneos --show-sdk-path)"
           cargo build --locked --features flutter,hwcodec,quick-support --release --target aarch64-apple-ios --lib
           # Le pbxproj lie ../../target/aarch64-apple-ios/release/liblibrustdesk.a :
           # recopier depuis le cache cargo persistant (CARGO_TARGET_DIR).
