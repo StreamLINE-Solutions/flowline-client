@@ -1,0 +1,173 @@
+name: Build FlowLINE iOS (Support)
+
+on:
+  # Déclenchement manuel uniquement (process release).
+  # Squelette posé pour le ticket 0029 (préparation iOS) :
+  #  - build NON SIGNÉ par défaut = smoke test du toolchain complet
+  #    (Rust aarch64-apple-ios + Flutter + Xcode) — aucune ipa installable ;
+  #  - build IPA signé avec `signed: true` = nécessite les secrets ASC_* et une
+  #    clé API App Store Connect « Team + Admin » (provisioning) ; l'app record
+  #    App Store Connect reste requise pour TestFlight (cf. 0029).
+  # ⚠ Flutter 3.24 + Xcode 27 : l'UIScene lifecycle (iOS 27 SDK) n'est pas géré
+  #    par cette version de Flutter — une app construite avec Xcode 27 peut ne
+  #    pas se lancer (flutter breaking change uiscenedelegate). À trancher dans
+  #    0029 (Xcode 26 dédié ou upgrade Flutter).
+  workflow_dispatch:
+    inputs:
+      signed:
+        description: "Produire une IPA signée (nécessite les secrets ASC_*)"
+        type: boolean
+        default: false
+
+# F14 (audit 21/09) : moindre privilège — le GITHUB_TOKEN du run ne peut que lire.
+permissions:
+  contents: read
+
+env:
+  MAC_RUST_VERSION: "1.88"
+  FLUTTER_VERSION: "3.24.5"
+  VERSION: "1.4.22"
+  # Xcode 27 : `strip = true` (profil release) produit des Mach-O corrompus
+  # (cf. 0081 / flowline-macos.yml) — strip désactivé en CI.
+  CARGO_PROFILE_RELEASE_STRIP: "none"
+  # bindgen doit charger le libclang de Xcode, pas celui de Homebrew LLVM.
+  LIBCLANG_PATH: "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib"
+
+jobs:
+  build-ios:
+    name: iOS arm64 (support)
+    runs-on: [self-hosted, macOS, ARM64, mac-mini]
+    steps:
+      - name: Setup local build cache (runner persistant)
+        shell: bash
+        run: |
+          CACHE_ROOT="${RUNNER_TOOL_CACHE:-$HOME/.cache}/flowline-cache"
+          mkdir -p "$CACHE_ROOT"
+          echo "CARGO_TARGET_DIR=$CACHE_ROOT/cargo-ios" >> "$GITHUB_ENV"
+
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+          # Repos privés (flowline-hbb-common...) : PAT org (secret FLOWLINE_GH_TOKEN).
+          token: ${{ secrets.FLOWLINE_GH_TOKEN }}
+          persist-credentials: false
+
+      - name: Configure git credentials (deps git privées)
+        env:
+          GITHUB_TOKEN: ${{ secrets.FLOWLINE_GH_TOKEN }}
+        shell: bash
+        run: |
+          GITCFG="$RUNNER_TEMP/git-global.conf"
+          git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+          echo "GIT_CONFIG_GLOBAL=$GITCFG" >> "$GITHUB_ENV"
+
+      - name: Install flutter
+        uses: subosito/flutter-action@2783a3f08e1baf891508463f8c6653c258246225  # v2.12.0
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: false
+
+      - name: Patch flutter
+        run: |
+          cd $(dirname $(dirname $(which flutter)))
+          # SDK Flutter persistant (tool cache du runner self-hosté) : repartir d'un
+          # état propre, sinon git apply échoue au 2e run (patch déjà appliqué).
+          git checkout -- .
+          [[ "3.24.5" == ${{env.FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: ${{ env.MAC_RUST_VERSION }}
+          targets: aarch64-apple-ios
+          components: "rustfmt"
+
+      - name: Build Rust (iOS arm64, support)
+        run: |
+          cargo build --locked --features flutter,hwcodec,quick-support --release --target aarch64-apple-ios --lib
+          # Le pbxproj lie ../../target/aarch64-apple-ios/release/liblibrustdesk.a :
+          # recopier depuis le cache cargo persistant (CARGO_TARGET_DIR).
+          mkdir -p target/aarch64-apple-ios/release
+          cp "$CARGO_TARGET_DIR/aarch64-apple-ios/release/liblibrustdesk.a" target/aarch64-apple-ios/release/
+
+      - name: Flutter pub get
+        working-directory: flutter
+        run: flutter pub get
+
+      - name: Build iOS non signé (smoke test)
+        working-directory: flutter
+        run: flutter build ios --release --no-codesign
+
+      - name: Prepare App Store Connect API key
+        if: ${{ inputs.signed }}
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        shell: bash
+        run: |
+          ASC_KEY_ID="$(printf '%s' "$ASC_KEY_ID" | tr -d '\r\n')"
+          if [[ -z "$ASC_API_KEY_P8" || -z "$ASC_KEY_ID" ]]; then
+            echo "::error::Secrets ASC_* manquants (cf. 0029) — build signé impossible."
+            exit 1
+          fi
+          mkdir -p ~/.appstoreconnect/private_keys
+          printf '%s' "$ASC_API_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+
+      - name: Archive + export IPA (signé)
+        if: ${{ inputs.signed }}
+        working-directory: flutter/ios
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASC_KEY_ID="$(printf '%s' "$ASC_KEY_ID" | tr -d '\r\n')"
+          ASC_ISSUER_ID="$(printf '%s' "$ASC_ISSUER_ID" | tr -d '\r\n')"
+          KEY="$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          # flutter build ipa (3.24) ne passe pas les flags d'auth à l'archive
+          # (flutter/flutter#139212) → xcodebuild manuel archive + export.
+          AUTH=(-allowProvisioningUpdates -allowProvisioningDeviceRegistration
+                -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID"
+                -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          xcodebuild archive -workspace Runner.xcworkspace -scheme Runner \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath build/Runner.xcarchive "${AUTH[@]}"
+          xcodebuild -exportArchive -archivePath build/Runner.xcarchive \
+            -exportOptionsPlist exportOptions.plist -exportPath build/ipa "${AUTH[@]}"
+
+      - name: Upload app non signée (smoke)
+        shell: bash
+        run: |
+          cd flutter/build/ios/iphoneos
+          zip -qry "$GITHUB_WORKSPACE/flowline-support-ios-unsigned-${{ env.VERSION }}.app.zip" Runner.app
+
+      - name: Upload artifact (non signé)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flowline-support-ios-unsigned-${{ env.VERSION }}
+          path: flowline-support-ios-unsigned-${{ env.VERSION }}.app.zip
+          retention-days: 30
+
+      - name: Upload artifact (IPA signée)
+        if: ${{ inputs.signed }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flowline-support-ios-${{ env.VERSION }}
+          path: flutter/ios/build/ipa/*.ipa
+          retention-days: 30
+
+      - name: Cleanup ASC key (runner self-hosté)
+        # Runner persistant : ne jamais laisser la clé API sur disque.
+        if: always() && inputs.signed
+        shell: bash
+        run: rm -f "$HOME/.appstoreconnect/private_keys/"AuthKey_*.p8
+
+      - name: Cleanup git credentials (PAT hors fichier temporaire)
+        # Audit 25/09 (0065) : runner self-hosté persistant — ne pas laisser le
+        # PAT dans $RUNNER_TEMP/git-global.conf.
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/git-global.conf"
