@@ -35,7 +35,7 @@ env:
   # par la présence des 4 secrets ESIGNER_* : sans eux, build non signé
   # (comportement historique). Quota Tier 1 : 240 signatures/an → ne signer
   # que les artefacts livrés (MSI + one-file support), pas les builds de test.
-  HAS_WIN_SIGNING: ${{ secrets.ESIGNER_USERNAME != '' && secrets.ESIGNER_PASSWORD != '' && secrets.ESIGNER_TOTP_SECRET != '' && secrets.ESIGNER_MASTER_KEY != '' }}
+  HAS_WIN_SIGNING: ${{ secrets.ESIGNER_USERNAME != '' && secrets.ESIGNER_PASSWORD != '' && secrets.ESIGNER_TOTP_SECRET != '' }}
   ESIGNER_MODE: "product"
   ESIGNER_CERT_NAME: "StreamLINE-Solutions Sàrl"
   # Audit 25/09 (0065) : plus de PAT en env workflow-level — limité aux steps
@@ -333,38 +333,43 @@ jobs:
       # ---- Signature Authenticode (0086) : SSL.com OV + eSigner Cloud ----
       # Gated par HAS_WIN_SIGNING (secrets ESIGNER_*) : sans secrets, les steps
       # sont sautés et les artefacts restent non signés.
-      # TODO(0086) : à figer au premier test réel (cert émis) — URL + SHA256 de
-      # la release SSLcom/eSignerCKA, syntaxe exacte config/load, nom du cert.
+      # CKA 1.1.2 (SSL.com) : le master.key est généré localement par `config -r`
+      # (pas de secret à fournir) ; `load`/`unload` seuls (pas d'arguments) ;
+      # le certificat est ensuite sélectionné par thumbprint (subject StreamLINE).
       - name: Install eSigner CKA (SSL.com cloud signing)
         if: env.HAS_WIN_SIGNING == 'true'
         env:
-          ESIGNER_CKA_URL: "https://github.com/SSLcom/eSignerCKA/releases/download/v1.0.6/eSigner_CKA_Installer.exe"
+          ESIGNER_CKA_URL: "https://github.com/SSLcom/eSignerCKA/releases/download/v1.1.2/SSL.COM.eSigner.CKA_1.1.2_build_202600624.exe"
+          ESIGNER_CKA_SHA256: "3f088403139505ddfb0ed3b56b72893f92c865f98b382753a1e1c695a5cece35"
         run: |
           Invoke-WebRequest -UseBasicParsing -Uri $env:ESIGNER_CKA_URL -OutFile "$env:RUNNER_TEMP\eSigner_CKA_Installer.exe"
-          Start-Process -Wait -FilePath "$env:RUNNER_TEMP\eSigner_CKA_Installer.exe" -ArgumentList '/CURRENTUSER','/VERYSILENT'
-          $cka = Join-Path $env:LOCALAPPDATA 'eSignerCKA\eSignerCKATool.exe'
+          $hash = (Get-FileHash "$env:RUNNER_TEMP\eSigner_CKA_Installer.exe" -Algorithm SHA256).Hash
+          if ($hash -ne $env:ESIGNER_CKA_SHA256.ToUpper()) { throw "SHA256 installeur CKA invalide : $hash" }
+          $ckaDir = Join-Path $env:LOCALAPPDATA 'eSignerCKA'
+          Start-Process -Wait -FilePath "$env:RUNNER_TEMP\eSigner_CKA_Installer.exe" -ArgumentList '/CURRENTUSER','/VERYSILENT',"/DIR=$ckaDir"
+          $cka = Join-Path $ckaDir 'eSignerCKATool.exe'
           if (-not (Test-Path $cka)) { throw "eSignerCKATool.exe introuvable après installation : $cka" }
           Add-Content -Path $env:GITHUB_ENV -Value "ESIGNER_CKA=$cka"
 
       - name: Configure eSigner CKA (automated) and load certificate
         if: env.HAS_WIN_SIGNING == 'true'
-        # Le master.key (contenu en secret) chiffre le credential stocké par le
-        # CKA ; le TOTP secret permet la génération automatique des codes 2FA
-        # (mode automated, pas d'OTP interactif). Nettoyés en fin de job.
+        # Le TOTP secret (secret code de l'enrôlement eSigner) permet la
+        # génération automatique des codes 2FA (mode automatisé, pas d'OTP
+        # interactif). Le master.key est généré localement (-r) et supprimé en
+        # fin de job (runner persistant).
         env:
           ESIGNER_USERNAME: ${{ secrets.ESIGNER_USERNAME }}
           ESIGNER_PASSWORD: ${{ secrets.ESIGNER_PASSWORD }}
           ESIGNER_TOTP_SECRET: ${{ secrets.ESIGNER_TOTP_SECRET }}
-          ESIGNER_MASTER_KEY: ${{ secrets.ESIGNER_MASTER_KEY }}
         run: |
           $masterKey = Join-Path $env:RUNNER_TEMP 'esigner-master.key'
-          [IO.File]::WriteAllText($masterKey, $ESIGNER_MASTER_KEY)
           & $env:ESIGNER_CKA config -mode $env:ESIGNER_MODE -user $env:ESIGNER_USERNAME -pass $env:ESIGNER_PASSWORD -totp $env:ESIGNER_TOTP_SECRET -key $masterKey -r
           if ($LASTEXITCODE -ne 0) { throw "eSigner CKA config échoué ($LASTEXITCODE)" }
-          & $env:ESIGNER_CKA load -key $masterKey -cert $env:ESIGNER_CERT_NAME
+          & $env:ESIGNER_CKA unload 2>$null
+          & $env:ESIGNER_CKA load
           if ($LASTEXITCODE -ne 0) { throw "eSigner CKA load échoué ($LASTEXITCODE)" }
-          $tp = (Get-ChildItem Cert:\CurrentUser\My |
-            Where-Object { $_.Subject -like "*$env:ESIGNER_CERT_NAME*" } |
+          $tp = (Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert |
+            Where-Object { $_.Subject -like "*StreamLINE-Solutions*" } |
             Sort-Object NotAfter -Descending | Select-Object -First 1).Thumbprint
           if (-not $tp) { throw "Thumbprint du certificat eSigner introuvable" }
           Add-Content -Path $env:GITHUB_ENV -Value "ESIGNER_THUMBPRINT=$tp"
@@ -391,8 +396,8 @@ jobs:
         if: always() && env.HAS_WIN_SIGNING == 'true'
         run: |
           $masterKey = Join-Path $env:RUNNER_TEMP 'esigner-master.key'
-          if ($env:ESIGNER_CKA -and (Test-Path $env:ESIGNER_CKA) -and (Test-Path $masterKey)) {
-            & $env:ESIGNER_CKA unload -key $masterKey 2>$null
+          if ($env:ESIGNER_CKA -and (Test-Path $env:ESIGNER_CKA)) {
+            & $env:ESIGNER_CKA unload 2>$null
           }
           if (Test-Path $masterKey) { Remove-Item -Force $masterKey }
 
