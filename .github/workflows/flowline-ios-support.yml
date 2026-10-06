@@ -122,6 +122,10 @@ jobs:
           # bindgen cross-compile : clang a besoin du sysroot du SDK iOS pour trouver
           # <stdint.h> (sinon « unknown type name 'uint8_t' » dans hwcodec).
           export BINDGEN_EXTRA_CLANG_ARGS_aarch64_apple_ios="--sysroot=$(xcrun --sdk iphoneos --show-sdk-path)"
+          # src/version.rs est généré par build.rs (gitignoré) : le checkout le nettoie
+          # mais le build script reste en cache (cache cargo persistant du runner) →
+          # forcer sa ré-exécution sinon E0583 « file not found for module version ».
+          touch build.rs
           cargo build --locked --features flutter,hwcodec,quick-support --release --target aarch64-apple-ios --lib
           # Le pbxproj lie ../../target/aarch64-apple-ios/release/liblibrustdesk.a :
           # recopier depuis le cache cargo persistant (CARGO_TARGET_DIR).
