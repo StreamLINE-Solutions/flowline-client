@@ -1,11 +1,11 @@
 name: FlowLINE
 repository: https://github.com/StreamLINE-Solutions/flowline-client
-release_source: https://flowline.my-vth.ch/downloads/flowline-1.4.21-android.apk
+release_source: https://www.flowline.support/downloads/flowline-1.4.22-android.apk
 pubkey: npub1r2e3wdku9d39qdxrlqx35w7azad4s955wazfmgvgyphh2t0lglfqs05fmf
-icon: https://flowline.my-vth.ch/images/flowline-icon-512.png
+icon: https://www.flowline.support/images/flowline-icon-512.png
 images:
-  - https://flowline.my-vth.ch/images/screenshots/flowline-home.png
-  - https://flowline.my-vth.ch/images/screenshots/flowline-screen-share.png
+  - https://www.flowline.support/images/screenshots/flowline-home.png
+  - https://www.flowline.support/images/screenshots/flowline-screen-share.png
 summary: Client de contrôle à distance FlowLINE
 description: FlowLINE — client de contrôle à distance (Windows, macOS, Linux, Android).
 tags:
@@ -13,4 +13,4 @@ tags:
   - support
   - productivity
 license: AGPL-3.0
-website: https://flowline.my-vth.ch
+website: https://www.flowline.support

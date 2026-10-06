@@ -10,7 +10,7 @@
 Android, distribué en mode technicien (accès non surveillé) et en mode support
 (QuickSupport, accès sous contrôle de la personne dépannée).
 
-Site : **[flowline.my-vth.ch](https://flowline.my-vth.ch)** — téléchargements,
+Site : **[www.flowline.support](https://www.flowline.support)** — téléchargements,
 tarifs et contact.
 
 Ce projet est un **white-label de RustDesk** (AGPL-3.0). Voir `LICENSE` et

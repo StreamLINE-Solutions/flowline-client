@@ -439,8 +439,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         // Module support (0057) : page /support = un seul gros bouton adapté à
         // l'OS. Client technicien : page download.html classique.
         final Uri url = Uri.parse(bind.isIncomingOnly()
-            ? 'https://flowline.my-vth.ch/support'
-            : 'https://flowline.my-vth.ch/download.html');
+            ? 'https://www.flowline.support/support/'
+            : 'https://www.flowline.support/download.html');
         await launchUrl(url);
       };
       if (isToUpdate) {
@@ -473,7 +473,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     // Module support (incoming-only) : pas de carte « Installer » — un
     // quick-support est temporaire et ne doit pas proposer d'installer le
     // service (ef2335f68). La carte de mise à jour ci-dessus suffit : bouton
-    // « Download » → https://flowline.my-vth.ch/support (0057).
+    // « Download » → https://www.flowline.support/support (0057).
     if (isWindows && !bind.isIncomingOnly() && !bind.isDisableInstallation()) {
       if (!bind.mainIsInstalled()) {
         return buildInstallCard(

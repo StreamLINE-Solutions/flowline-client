@@ -595,7 +595,7 @@ class ServerInfo extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: InkWell(
                       onTap: () async => await launchUrl(Uri.parse(
-                          'https://flowline.my-vth.ch/aide/utilisateur.html')),
+                          'https://www.flowline.support/aide/utilisateur.html')),
                       child: Padding(
                           padding: const EdgeInsets.only(top: 12),
                           child: Text(translate('Help'),

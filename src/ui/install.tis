@@ -50,7 +50,7 @@ class Install: Reactor.Component {
     }
 
     event click $(#agreement) {
-        view.open_url("https://flowline.my-vth.ch/privacy.html");
+        view.open_url("https://www.flowline.support/privacy.html");
     }
 
     event click $(#submit) {

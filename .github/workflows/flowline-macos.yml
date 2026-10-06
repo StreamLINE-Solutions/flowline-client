@@ -15,7 +15,7 @@ env:
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
-  VERSION: "1.4.21"
+  VERSION: "1.4.22"
   # Xcode 27 : `strip = true` (profil release) produit des Mach-O corrompus
   # (« mis-aligned LINKEDIT string pool ») — la dylib proc-macro cidre_macros
   # devient illisible (E0463) et le build aarch64 échoue. Strip désactivé en CI

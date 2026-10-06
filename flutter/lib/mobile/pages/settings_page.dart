@@ -36,7 +36,7 @@ class SettingsPage extends StatefulWidget implements PageShape {
   State<SettingsPage> createState() => _SettingsState();
 }
 
-const url = 'https://flowline.my-vth.ch/';
+const url = 'https://www.flowline.support/';
 
 enum KeepScreenOn {
   never,
@@ -962,7 +962,7 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
                 title: Text(translate("Version: ") + version),
                 value: Padding(
                   padding: EdgeInsets.symmetric(vertical: 8),
-child: Text('flowline.my-vth.ch',
+child: Text('www.flowline.support',
                       style: TextStyle(
                         decoration: TextDecoration.underline,
                       )),
@@ -1103,7 +1103,7 @@ void showAbout(OverlayDialogManager dialogManager) {
             },
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
-              child: Text('flowline.my-vth.ch',
+              child: Text('www.flowline.support',
                   style: TextStyle(
                     decoration: TextDecoration.underline,
                   )),
@@ -1111,7 +1111,7 @@ void showAbout(OverlayDialogManager dialogManager) {
         InkWell(
             onTap: () async {
               await launchUrl(
-                  Uri.parse('https://flowline.my-vth.ch/aide/'));
+                  Uri.parse('https://www.flowline.support/aide/'));
             },
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 8),

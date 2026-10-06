@@ -42,7 +42,7 @@ class _OnlineStatusWidgetState extends State<OnlineStatusWidget> {
   double? get height => bind.isIncomingOnly() ? null : em * 3;
 
   void onUsePublicServerGuide() {
-    const url = "https://flowline.my-vth.ch/#tarifs";
+    const url = "https://www.flowline.support/#tarifs";
     canLaunchUrlString(url).then((can) {
       if (can) {
         launchUrlString(url);

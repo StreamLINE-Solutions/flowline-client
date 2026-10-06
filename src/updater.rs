@@ -26,10 +26,10 @@ const DUR_ONE_DAY: Duration = Duration::from_secs(60 * 60 * 24);
 
 /// 0072 : base des artefacts publiés (site FlowLINE).
 #[cfg(target_os = "linux")]
-const FLOWLINE_DOWNLOADS_BASE: &str = "https://flowline.my-vth.ch/downloads";
+const FLOWLINE_DOWNLOADS_BASE: &str = "https://www.flowline.support/downloads";
 /// 0072 : page de téléchargement (fallback AppImage / architecture non couverte).
 #[cfg(target_os = "linux")]
-const FLOWLINE_DOWNLOAD_PAGE: &str = "https://flowline.my-vth.ch/download.html";
+const FLOWLINE_DOWNLOAD_PAGE: &str = "https://www.flowline.support/download.html";
 
 pub fn update_controlling_session_count(count: usize) {
     CONTROLLING_SESSION_COUNT.store(count, Ordering::SeqCst);

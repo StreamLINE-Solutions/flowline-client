@@ -2453,7 +2453,7 @@ class _AboutState extends State<_About> {
               ),
               InkWell(
                   onTap: () async => await launchUrl(
-                      Uri.parse('https://flowline.my-vth.ch/aide/')),
+                      Uri.parse('https://www.flowline.support/aide/')),
                   child: Text(translate('Help'),
                           style: const TextStyle(
                               decoration: TextDecoration.underline))

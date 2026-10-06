@@ -109,7 +109,7 @@ class ConnectStatus: Reactor.Component {
     }
 
     event click $(#setup-server) () {
-        handler.open_url("https://flowline.my-vth.ch");
+        handler.open_url("https://www.flowline.support");
     }
 }
 
@@ -617,8 +617,8 @@ class MyIdMenu: Reactor.Component {
         msgbox("custom-nocancel-nook-hasclose", translate("About") + " " + name, "<div style='line-height: 2em'> \
             <div>Version: " + handler.get_version() + " \
             <div>Fingerprint: " + handler.get_fingerprint() + " \
-            <div .link .custom-event url='https://flowline.my-vth.ch'>" + translate("Privacy Statement") + "</div> \
-            <div .link .custom-event url='https://flowline.my-vth.ch'>" + translate("Website") + "</div> \
+            <div .link .custom-event url='https://www.flowline.support'>" + translate("Privacy Statement") + "</div> \
+            <div .link .custom-event url='https://www.flowline.support'>" + translate("Website") + "</div> \
 	    <div style='background: #2c8cff; color: white; padding: 1em; margin-top: 1em;'>Copyright &copy; 2026 StreamLINE-Solutions Sàrl.\
             <br />" + handler.get_license() + " \
             <p style='font-weight: bold'>" + translate("Slogan_tip") + "</p>\
@@ -852,7 +852,7 @@ class UpdateMe: Reactor.Component {
     event click $(#install-me) {
         // 0072 : page de téléchargement (Windows sciter ; l'auto-update
         // silencieux reste le chemin principal pour les clients installés).
-        handler.open_url("https://flowline.my-vth.ch/download.html");
+        handler.open_url("https://www.flowline.support/download.html");
     }
 }
 
@@ -1316,7 +1316,7 @@ event change $(#msgbox input[name='confirmation']) {
 $(body).content(<div style="size:*"><App /><div #msgbox /></div>);
 
 event click $(#powered-by) {
-    handler.open_url("https://flowline.my-vth.ch");
+    handler.open_url("https://www.flowline.support");
 }
 
 event click $(#open-settings) (_, me) {
