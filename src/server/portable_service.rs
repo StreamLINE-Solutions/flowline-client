@@ -62,6 +62,11 @@ const SHMEM_NAME_MAX_LEN: usize = 64;
 const MAX_NACK: usize = 3;
 const PORTABLE_SERVICE_STARTUP_TIMEOUT: Duration = Duration::from_secs(15);
 const MAX_DXGI_FAIL_TIME: usize = 5;
+// Mirror of the video service Windows GDI fallback: after a few WouldBlocks from the
+// DXGI capturer, switch to GDI. A DXGI duplication created in the elevated/SYSTEM
+// context can otherwise never deliver a frame (e.g. created during the UAC desktop
+// transition) and keep the remote screen frozen forever.
+const MAX_DXGI_WOULDBLOCK_TIME: usize = 3;
 
 #[inline]
 fn is_valid_portable_service_shmem_name(name: &str) -> bool {
@@ -585,6 +590,8 @@ pub mod server {
         let mut spf = Duration::from_millis(last_timeout_ms as _);
         let mut first_frame_captured = false;
         let mut dxgi_failed_times = 0;
+        let mut dxgi_would_block_times = 0;
+        let mut frame_count: u64 = 0;
         let mut display_width = 0;
         let mut display_height = 0;
         loop {
@@ -611,8 +618,16 @@ pub mod server {
                     let display = displays.remove(current_display);
                     display_width = display.width();
                     display_height = display.height();
+                    let display_name = display.name();
                     match Capturer::new(display) {
                         Ok(mut v) => {
+                            log::info!(
+                                "portable service capturer created: {}x{} ({}), gdi: {}",
+                                display_width,
+                                display_height,
+                                display_name,
+                                v.is_gdi()
+                            );
                             c = {
                                 last_current_display = current_display;
                                 first_frame_captured = false;
@@ -688,6 +703,17 @@ pub mod server {
                             utils::increase_counter(shmem.as_ptr().add(ADDR_CAPTURE_FRAME_COUNTER));
                             first_frame_captured = true;
                             dxgi_failed_times = 0;
+                            dxgi_would_block_times = 0;
+                            frame_count += 1;
+                            if frame_count == 1 || frame_count % 300 == 0 {
+                                log::info!(
+                                    "portable service: {} frame(s) written to shared memory ({}x{}, len: {})",
+                                    frame_count,
+                                    display_width,
+                                    display_height,
+                                    f.data().len()
+                                );
+                            }
                         }
                         Frame::Texture(_) => {
                             // should not happen
@@ -702,10 +728,15 @@ pub mod server {
                         }
                         if e.kind() != std::io::ErrorKind::WouldBlock {
                             // DXGI_ERROR_INVALID_CALL after each success on Microsoft GPU driver
-                            // log::error!("capture frame failed: {:?}", e);
                             if c.as_ref().map(|c| c.is_gdi()) == Some(false) {
                                 // nog gdi
                                 dxgi_failed_times += 1;
+                                if dxgi_failed_times == 1 {
+                                    log::warn!(
+                                        "portable service: capture frame failed (dxgi): {:?}",
+                                        e
+                                    );
+                                }
                             }
                             if dxgi_failed_times > MAX_DXGI_FAIL_TIME {
                                 c = None;
@@ -713,6 +744,23 @@ pub mod server {
                                 std::thread::sleep(spf);
                             }
                         } else {
+                            // A DXGI WouldBlock can persist indefinitely in the elevated/SYSTEM
+                            // context (e.g. duplication created during the UAC desktop transition).
+                            // Mirror video_service.rs: after a few WouldBlocks, fall back to GDI,
+                            // otherwise the server would wait for frames forever (frozen screen).
+                            if c.as_ref().map(|c| c.is_gdi()) == Some(false) {
+                                dxgi_would_block_times += 1;
+                                if dxgi_would_block_times > MAX_DXGI_WOULDBLOCK_TIME {
+                                    log::info!(
+                                        "portable service: no image from dxgi, fall back to gdi"
+                                    );
+                                    dxgi_would_block_times = 0;
+                                    dxgi_failed_times = MAX_DXGI_FAIL_TIME + 1;
+                                    c = None;
+                                    std::thread::sleep(spf);
+                                    continue;
+                                }
+                            }
                             shmem.write(ADDR_CAPTURE_WOULDBLOCK, &utils::i32_to_vec(TRUE));
                         }
                     }
@@ -833,6 +881,7 @@ pub mod client {
         static ref RUNNING: Arc<Mutex<bool>> = Default::default();
         static ref STARTING: Arc<Mutex<bool>> = Default::default();
         static ref STARTING_TOKEN: AtomicU64 = AtomicU64::new(0);
+        static ref FRAME_RECEIVED_COUNT: AtomicU64 = AtomicU64::new(0);
         static ref SHMEM: Arc<Mutex<Option<SharedMemory>>> = Default::default();
         static ref SHMEM_RUNTIME_NAME: Arc<Mutex<Option<String>>> = Default::default();
         static ref IPC_RUNTIME_TOKEN: Arc<Mutex<Option<String>>> = Default::default();
@@ -1276,6 +1325,15 @@ pub mod client {
                     }
                     let frame_ptr = base.add(ADDR_CAPTURE_FRAME);
                     let data = slice::from_raw_parts(frame_ptr, frame_len);
+                    let count = FRAME_RECEIVED_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
+                    if count == 1 {
+                        log::info!(
+                            "portable service: first frame received from shared memory ({}x{}, len: {})",
+                            self.width,
+                            self.height,
+                            frame_len
+                        );
+                    }
                     Ok(Frame::PixelBuffer(PixelBuffer::with_BGRA(
                         data,
                         self.width,
