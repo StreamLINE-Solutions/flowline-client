@@ -491,11 +491,26 @@ pub fn open_linux_update() -> ResultType<()> {
     install_linux_deb(&path)
 }
 
-/// 1.4.21 (Option B v2) : installe le .deb vérifié via pkexec + apt-get
+/// 1.4.21 (Option B v2) / 0074 : classe l'échec de `pkexec` pour l'UI —
+/// 127 ou « No authentication agent » => `no-agent` (aucun agent polkit dans
+/// la session), 126 => `cancelled` (annulé/refusé), sinon `failed`.
+#[cfg(target_os = "linux")]
+fn classify_pkexec_failure(code: Option<i32>, stderr: &str) -> &'static str {
+    if stderr.contains("No authentication agent") || code == Some(127) {
+        "no-agent"
+    } else if code == Some(126) {
+        "cancelled"
+    } else {
+        "failed"
+    }
+}
+
+/// 1.4.21 (Option B v2) / 0074 : installe le .deb vérifié via pkexec + apt-get
 /// (fenêtre de mot de passe polkit) ; si pkexec est absent, repli sur
 /// l'ouverture du fichier par l'installateur système (0072). Le résultat est
 /// remonté à l'UI Flutter via l'événement `flowline_update_install_finish`
-/// (status ok/error) — cf. `checkUpdate()` côté Dart.
+/// (status ok/error + reason no-agent/cancelled/failed + chemin du .deb) —
+/// cf. `checkUpdate()` côté Dart.
 #[cfg(target_os = "linux")]
 fn install_linux_deb(path: &Path) -> ResultType<()> {
     const PKEXEC: &str = "/usr/bin/pkexec";
@@ -503,22 +518,27 @@ fn install_linux_deb(path: &Path) -> ResultType<()> {
     if !Path::new(PKEXEC).exists() || !Path::new(APT_GET).exists() {
         return xdg_open(&path.to_string_lossy());
     }
-    let status = std::process::Command::new(PKEXEC)
+    let output = std::process::Command::new(PKEXEC)
         .arg(APT_GET)
         .args(["install", "-y"])
         .arg(path)
-        .status();
-    let (ok, message) = match status {
-        Ok(s) if s.success() => (true, "installed".to_owned()),
-        Ok(s) => (
-            false,
-            format!(
-                "apt-get exited with {}",
-                s.code()
-                    .map_or_else(|| "signal".to_owned(), |code| code.to_string())
-            ),
-        ),
-        Err(e) => (false, e.to_string()),
+        .output();
+    let (ok, reason, message) = match output {
+        Ok(o) if o.status.success() => (true, "installed", "installed".to_owned()),
+        Ok(o) => {
+            let code = o.status.code();
+            let stderr = String::from_utf8_lossy(&o.stderr);
+            (
+                false,
+                classify_pkexec_failure(code, &stderr),
+                format!(
+                    "pkexec/apt-get exited with {}: {}",
+                    code.map_or_else(|| "signal".to_owned(), |c| c.to_string()),
+                    stderr.trim()
+                ),
+            )
+        }
+        Err(e) => (false, "failed", e.to_string()),
     };
     log::info!(
         "Mise à jour Linux: installation de {} via pkexec/apt-get: {}",
@@ -527,10 +547,13 @@ fn install_linux_deb(path: &Path) -> ResultType<()> {
     );
     #[cfg(feature = "flutter")]
     {
+        let path_str = path.to_string_lossy();
         let mut m = std::collections::HashMap::new();
         m.insert("name", "flowline_update_install_finish");
         m.insert("status", if ok { "ok" } else { "error" });
+        m.insert("reason", reason);
         m.insert("message", message.as_str());
+        m.insert("path", path_str.as_ref());
         if let Ok(data) = serde_json::to_string(&m) {
             let _ = crate::flutter::push_global_event(crate::flutter::APP_TYPE_MAIN, data);
         }
@@ -539,5 +562,42 @@ fn install_linux_deb(path: &Path) -> ResultType<()> {
         Ok(())
     } else {
         bail!("installation de la mise à jour Linux échouée: {message}")
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classify_pkexec_no_agent() {
+        assert_eq!(classify_pkexec_failure(Some(127), ""), "no-agent");
+        assert_eq!(
+            classify_pkexec_failure(
+                Some(126),
+                "Error executing command as another user: No authentication agent found."
+            ),
+            "no-agent"
+        );
+    }
+
+    #[test]
+    fn classify_pkexec_cancelled() {
+        assert_eq!(
+            classify_pkexec_failure(
+                Some(126),
+                "Error executing command as another user: Request dismissed"
+            ),
+            "cancelled"
+        );
+    }
+
+    #[test]
+    fn classify_pkexec_failed() {
+        assert_eq!(
+            classify_pkexec_failure(Some(100), "apt-get: boom"),
+            "failed"
+        );
+        assert_eq!(classify_pkexec_failure(None, ""), "failed");
     }
 }

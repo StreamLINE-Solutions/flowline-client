@@ -4051,30 +4051,64 @@ void checkUpdate() {
         stateGlobal.updateUrl.value = evt['url'];
       }
     });
-    // 1.4.21 (Option B v2) : résultat de l'installation Linux via pkexec
-    // (updater.rs) — « ok » => carte fermée + message « relancez », sinon
-    // message d'échec/annulation (installation manuelle possible).
+    // 1.4.21 (Option B v2) / 0074 : résultat de l'installation Linux via
+    // pkexec (updater.rs) — « ok » => carte fermée + message « relancez » ;
+    // « no-agent » (pas d'agent polkit) => commande manuelle à copier ;
+    // « cancelled » => message simple ; sinon message d'échec générique.
     platformFFI.registerEventHandler(
         kFlowlineUpdateInstallFinish, kFlowlineUpdateInstallFinish,
         (Map<String, dynamic> evt) async {
-      final tip = evt['status'] == 'ok'
-          ? 'update-installed-restart-tip'
-          : 'update-install-failed-tip';
+      final reason = evt['reason'];
+      final path = evt['path'] is String ? evt['path'] as String : '';
       if (evt['status'] == 'ok') {
         stateGlobal.updateUrl.value = '';
+        showUpdateInstallDialog('update-installed-restart-tip');
+        return;
       }
-      gFFI.dialogManager.show((setState, close, context) => CustomAlertDialog(
-            title: Text(translate('update-title'),
-                style: TextStyle(fontSize: 21)),
-            content: Text(translate(tip)),
-            actions: [dialogButton('OK', onPressed: close)],
-            onCancel: close,
-          ));
+      if (reason == 'no-agent') {
+        final command = 'sudo apt install "$path"';
+        gFFI.dialogManager.show((setState, close, context) => CustomAlertDialog(
+              title: Text(translate('update-title'),
+                  style: TextStyle(fontSize: 21)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(translate('update-install-no-agent-tip')),
+                  const SizedBox(height: 12),
+                  SelectableText(command,
+                      style: const TextStyle(fontFamily: 'monospace')),
+                ],
+              ),
+              actions: [
+                dialogButton(translate('update-copy-command'), onPressed: () {
+                  Clipboard.setData(ClipboardData(text: command));
+                  showToast(translate('Copied'));
+                  close();
+                }),
+                dialogButton('OK', onPressed: close),
+              ],
+              onCancel: close,
+            ));
+        return;
+      }
+      showUpdateInstallDialog(reason == 'cancelled'
+          ? 'update-install-cancelled-tip'
+          : 'update-install-failed-tip');
     });
     Timer(const Duration(seconds: 1), () async {
       bind.mainGetSoftwareUpdateUrl();
     });
   }
+}
+
+void showUpdateInstallDialog(String tipKey) {
+  gFFI.dialogManager.show((setState, close, context) => CustomAlertDialog(
+        title: Text(translate('update-title'), style: TextStyle(fontSize: 21)),
+        content: Text(translate(tipKey)),
+        actions: [dialogButton('OK', onPressed: close)],
+        onCancel: close,
+      ));
 }
 
 // https://github.com/flutter/flutter/issues/153560#issuecomment-2497160535
