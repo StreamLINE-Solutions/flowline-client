@@ -2679,6 +2679,9 @@ class _CloseMenu extends StatelessWidget {
       assetName: 'assets/close.svg',
       tooltip: 'Close',
       onPressed: () async {
+        if (await showInterventionReportDialog(ffi: ffi)) {
+          return;
+        }
         if (await showConnEndAuditDialogCloseCanceled(ffi: ffi)) {
           return;
         }

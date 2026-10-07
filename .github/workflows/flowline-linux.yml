@@ -5,6 +5,15 @@ on:
   # rebuild plus automatiquement. Lancer depuis GitHub Actions → "Run
   # workflow" → branche main quand un build est voulu.
   workflow_dispatch:
+    inputs:
+      api_server:
+        description: "FLOWLINE_API_SERVER (vide = prod ; http://localhost:21114 = build dev POC)"
+        required: false
+        default: ""
+      rendezvous_servers:
+        description: "RUSTDESK_RENDEZVOUS_SERVERS (vide = falcon.my-vth.ch)"
+        required: false
+        default: ""
 
 # F14 (audit 21/09) : moindre privilège — le GITHUB_TOKEN du run ne peut que lire.
 permissions:
@@ -18,10 +27,10 @@ env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   # FlowLINE white-label : serveurs de rendez-vous (séparés par virgule) + clé
   # publique. Déployer vers une autre infra = surcharger ces 2 vars (dispatch
-  # manuel, champ "env" du job). Valeurs par défaut = infra falcon.
-  RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
+  # manuel avec inputs, ou champ "env" du job). Valeurs par défaut = infra falcon.
+  RUSTDESK_RENDEZVOUS_SERVERS: ${{ inputs.rendezvous_servers || 'falcon.my-vth.ch' }}
   RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
-  FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
+  FLOWLINE_API_SERVER: ${{ inputs.api_server || 'https://api-falcon.my-vth.ch' }}
   # Audit 25/09 (0065) : plus de PAT en env workflow-level — limité aux steps
   # checkout + « Configure git credentials ».
 

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter_hbb/utils/http_service.dart' as http;
 
 import '../../common.dart';
+import '../../models/ai_model.dart';
 import '../../models/model.dart';
 import '../../models/platform_model.dart';
 import 'address_book.dart';
@@ -1620,6 +1622,257 @@ Future<bool> desktopTryShowTabAuditDialogCloseCancelled(
     return res;
   } catch (e) {
     debugPrint('Failed to show audit dialog: $e');
+    return false;
+  }
+}
+
+// POC 0092 : rapport d'intervention IA en fin de session (builds dev uniquement,
+// API locale — cf. ai_model.dart). Le technicien confirme au lieu de rédiger :
+// notes + tags + dictée (sovia-stt) -> CR généré par SovIA (sovia).
+// Retour : true = annulé (ne pas fermer la session), false = continuer.
+Future<bool> showInterventionReportDialog({required FFI ffi}) async {
+  if (!await isPocAiBuild()) {
+    return false;
+  }
+  final startedAt = sessionStartTime(ffi.sessionId);
+  final peerId = ffi.id;
+  final pi = ffi.ffiModel.pi;
+  final peerHostname = pi.hostname.isNotEmpty ? pi.hostname : pi.username;
+  final controller = TextEditingController();
+  final selectedTags = <String>{};
+  var generating = false;
+  var transcribing = false;
+  String? report;
+  String? error;
+  Process? recorder;
+  String? dictationPath;
+
+  const tags = [
+    'Dépannage',
+    'Mise à jour',
+    'Configuration',
+    'Installation',
+    'Formation',
+  ];
+
+  ffi.dialogManager.dismissAll();
+
+  Future<void> stopRecorder() async {
+    final rec = recorder;
+    recorder = null;
+    if (rec != null) {
+      rec.kill(ProcessSignal.sigterm);
+      await rec.exitCode;
+    }
+  }
+
+  return await ffi.dialogManager.show<bool>((setState, close, context) {
+    Future<void> cancelDialog() async {
+      await stopRecorder();
+      close(true);
+    }
+
+    Future<void> skipDialog() async {
+      await stopRecorder();
+      close(false);
+    }
+
+    Future<void> generate() async {
+      if (generating || transcribing) return;
+      if (controller.text.trim().isEmpty && selectedTags.isEmpty) {
+        setState(() => error = translate('Note or tags required'));
+        return;
+      }
+      await stopRecorder();
+      setState(() {
+        generating = true;
+        error = null;
+      });
+      try {
+        final text = await apiGenerateInterventionReport(
+          notes: controller.text.trim(),
+          tags: selectedTags.toList(),
+          peerId: peerId,
+          peerHostname: peerHostname,
+          startedAt: startedAt,
+          endedAt: DateTime.now(),
+        );
+        setState(() {
+          report = text;
+          generating = false;
+        });
+      } catch (e) {
+        setState(() {
+          error = e.toString();
+          generating = false;
+        });
+      }
+    }
+
+    Future<void> toggleDictation() async {
+      if (transcribing || generating) return;
+      if (recorder != null) {
+        final rec = recorder!;
+        recorder = null;
+        rec.kill(ProcessSignal.sigterm);
+        await rec.exitCode;
+        setState(() => transcribing = true);
+        try {
+          final text = await apiTranscribeAudio(dictationPath!);
+          final current = controller.text.trim();
+          controller.text = current.isEmpty ? text : '$current $text';
+        } catch (e) {
+          setState(() => error = e.toString());
+        } finally {
+          setState(() => transcribing = false);
+        }
+      } else {
+        try {
+          final path =
+              '${Directory.systemTemp.path}/flowline_dictation_${DateTime.now().millisecondsSinceEpoch}.wav';
+          final rec = await Process.start('parec', [
+            '--format=s16le',
+            '--rate=16000',
+            '--channels=1',
+            '--file-format=wav',
+            path,
+          ]);
+          dictationPath = path;
+          recorder = rec;
+          setState(() => error = null);
+        } catch (e) {
+          setState(() => error = 'parec: $e');
+        }
+      }
+    }
+
+    final duration = startedAt == null
+        ? ''
+        : '${DateTime.now().difference(startedAt).inMinutes} min';
+
+    final buttons = <Widget>[];
+    if (report == null) {
+      buttons.add(dialogButton('Skip',
+          onPressed: (generating || transcribing) ? null : skipDialog,
+          isOutline: true));
+      buttons.add(dialogButton('Cancel',
+          onPressed: (generating || transcribing) ? null : cancelDialog,
+          isOutline: true));
+      buttons.add(dialogButton('Generate report',
+          onPressed: (generating || transcribing) ? null : generate));
+    } else {
+      buttons.add(dialogButton('Finish', onPressed: skipDialog));
+    }
+
+    return CustomAlertDialog(
+      title: Text(translate('Intervention report')),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (report == null) ...[
+              Text(
+                '${translate('Remote device')}: $peerHostname ($peerId)'
+                '${duration.isEmpty ? '' : '  •  ${translate('Session duration')}: $duration'}',
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                minLines: 4,
+                maxLines: 8,
+                maxLength: 2000,
+                decoration: InputDecoration(
+                  hintText: translate('Note'),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: tags
+                    .map((tag) => FilterChip(
+                          label: Text(tag),
+                          selected: selectedTags.contains(tag),
+                          onSelected: (value) => setState(() {
+                            if (value) {
+                              selectedTags.add(tag);
+                            } else {
+                              selectedTags.remove(tag);
+                            }
+                          }),
+                        ))
+                    .toList(),
+              ),
+              const SizedBox(height: 8),
+              if (Platform.isLinux)
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed:
+                          (generating || transcribing) ? null : toggleDictation,
+                      icon: Icon(
+                        recorder != null ? Icons.stop : Icons.mic,
+                        color: recorder != null ? Colors.red : null,
+                      ),
+                      label: Text(recorder != null
+                          ? translate('Stop dictation')
+                          : translate('Dictate')),
+                    ),
+                    if (transcribing) ...[
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(translate('Transcribing...')),
+                    ],
+                  ],
+                ),
+              if (error != null) ...[
+                const SizedBox(height: 8),
+                Text(error!, style: const TextStyle(color: Colors.red)),
+              ],
+              if (generating) ...[
+                const SizedBox(height: 8),
+                const LinearProgressIndicator(),
+                const SizedBox(height: 4),
+                Text(translate('Generating report...')),
+              ],
+            ] else ...[
+              SizedBox(
+                height: 320,
+                child: SingleChildScrollView(
+                  child: SelectionArea(child: Text(report!)),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: buttons,
+      onCancel: cancelDialog,
+    );
+  }) ??
+      false;
+}
+
+// POC 0092 : même helper que desktopTryShowTabAuditDialogCloseCancelled pour
+// les fermetures d'onglet/fenêtre de RemotePage.
+Future<bool> desktopTryShowTabInterventionReport(
+    {required String id, required DesktopTabController tabController}) async {
+  try {
+    final page =
+        tabController.state.value.tabs.firstWhere((tab) => tab.key == id).page;
+    final ffi = (page as dynamic).ffi;
+    return await showInterventionReportDialog(ffi: ffi);
+  } catch (e) {
+    debugPrint('Failed to show intervention report dialog: $e');
     return false;
   }
 }

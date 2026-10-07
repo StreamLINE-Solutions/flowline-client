@@ -770,5 +770,15 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("All monitors", "Tutti gli schermi"),
         ("#{} monitor", "Schermo {}"),
         ("conn-e2ee-unavailable-tip", "Impossibile verificare la crittografia end-to-end.\nIl dispositivo remoto potrebbe essere ancora in configurazione. Riprova più tardi.\nSe il problema persiste, il server potrebbe non essere attendibile.\nContinuare comunque?"),
+        ("Intervention report", "Rapporto d’intervento"),
+        ("Remote device", "Dispositivo remoto"),
+        ("Session duration", "Durata della sessione"),
+        ("Dictate", "Dettare"),
+        ("Stop dictation", "Ferma dettatura"),
+        ("Transcribing...", "Trascrizione…"),
+        ("Generate report", "Genera il rapporto"),
+        ("Generating report...", "Generazione del rapporto…"),
+        ("Finish", "Termina"),
+        ("Note or tags required", "Nota o tag richiesto"),
     ].iter().cloned().collect();
 }

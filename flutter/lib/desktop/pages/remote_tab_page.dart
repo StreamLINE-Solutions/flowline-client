@@ -81,6 +81,12 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
         selectedIcon: selectedIcon,
         unselectedIcon: unselectedIcon,
         onTabCloseButton: () async {
+          if (await desktopTryShowTabInterventionReport(
+            id: peerId!,
+            tabController: tabController,
+          )) {
+            return;
+          }
           if (await desktopTryShowTabAuditDialogCloseCancelled(
             id: peerId!,
             tabController: tabController,
@@ -331,6 +337,12 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
           style: style,
         ),
         proc: () async {
+          if (await desktopTryShowTabInterventionReport(
+            id: key,
+            tabController: tabController,
+          )) {
+            return;
+          }
           if (await desktopTryShowTabAuditDialogCloseCancelled(
             id: key,
             tabController: tabController,
@@ -392,6 +404,12 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
   Future<bool> handleWindowCloseButton() async {
     final connLength = tabController.length;
     if (connLength == 1) {
+      if (await desktopTryShowTabInterventionReport(
+        id: tabController.state.value.tabs[0].key,
+        tabController: tabController,
+      )) {
+        return false;
+      }
       if (await desktopTryShowTabAuditDialogCloseCancelled(
         id: tabController.state.value.tabs[0].key,
         tabController: tabController,
@@ -454,6 +472,12 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
         selectedIcon: selectedIcon,
         unselectedIcon: unselectedIcon,
         onTabCloseButton: () async {
+          if (await desktopTryShowTabInterventionReport(
+            id: id,
+            tabController: tabController,
+          )) {
+            return;
+          }
           if (await desktopTryShowTabAuditDialogCloseCancelled(
             id: id,
             tabController: tabController,

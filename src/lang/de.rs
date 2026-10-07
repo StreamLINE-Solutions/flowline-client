@@ -770,5 +770,15 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("All monitors", "Alle Bildschirme"),
         ("#{} monitor", "Bildschirm {}"),
         ("conn-e2ee-unavailable-tip", "Ende-zu-Ende-Verschlüsselung konnte nicht verifiziert werden.\nDas entfernte Gerät wird möglicherweise noch eingerichtet. Versuchen Sie es später erneut.\nWenn dies weiterhin auftritt, ist der Server möglicherweise nicht vertrauenswürdig.\nTrotzdem fortfahren?"),
+        ("Intervention report", "Interventionsbericht"),
+        ("Remote device", "Ferngerät"),
+        ("Session duration", "Sitzungsdauer"),
+        ("Dictate", "Diktieren"),
+        ("Stop dictation", "Diktat stoppen"),
+        ("Transcribing...", "Transkription…"),
+        ("Generate report", "Bericht erstellen"),
+        ("Generating report...", "Bericht wird erstellt…"),
+        ("Finish", "Beenden"),
+        ("Note or tags required", "Notiz oder Tag erforderlich"),
     ].iter().cloned().collect();
 }
