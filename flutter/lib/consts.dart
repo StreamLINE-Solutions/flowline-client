@@ -105,6 +105,9 @@ const String kOptionEnableHwcodec = "enable-hwcodec";
 const String kOptionAllowAutoRecordIncoming = "allow-auto-record-incoming";
 const String kOptionAllowAutoRecordOutgoing = "allow-auto-record-outgoing";
 const String kOptionVideoSaveDirectory = "video-save-directory";
+// POC 0092 : rapport d'intervention PDF (dossier + sauvegarde automatique).
+const String kOptionReportSavePdf = "report-save-pdf";
+const String kOptionReportSaveDirectory = "report-save-directory";
 const String kOptionAccessMode = "access-mode";
 const String kOptionEnableKeyboard = "enable-keyboard";
 // "Settings -> Security -> Permissions"

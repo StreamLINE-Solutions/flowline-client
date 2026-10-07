@@ -13,6 +13,7 @@ import 'package:flutter_hbb/desktop/pages/desktop_home_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/remote_toolbar.dart';
 import 'package:flutter_hbb/mobile/widgets/dialog.dart';
+import 'package:flutter_hbb/models/ai_model.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/printer_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
@@ -420,6 +421,7 @@ class _GeneralState extends State<_General> {
         if (!isWeb) hwcodec(),
         if (!isWeb) audio(context),
         if (!isWeb) record(context),
+        if (!isWeb) report(context),
         if (!isWeb) WaylandCard(),
         other()
       ],
@@ -827,6 +829,50 @@ class _GeneralState extends State<_General> {
           ).marginOnly(left: _kContentHMargin),
       ]);
     });
+  }
+
+  // POC 0092 : rapport d'intervention PDF (dossier + sauvegarde automatique).
+  Widget report(BuildContext context) {
+    final dir = reportDirectory();
+    final exists = Directory(dir).existsSync();
+    return _Card(title: 'Report', children: [
+      _OptionCheckBox(context, 'Save report as PDF after generation',
+          kOptionReportSavePdf),
+      Row(
+        children: [
+          Text('${translate('Directory')}:'),
+          Expanded(
+            child: GestureDetector(
+                onTap: exists ? () => launchUrl(Uri.file(dir)) : null,
+                child: Text(
+                  dir,
+                  softWrap: true,
+                  style: exists
+                      ? const TextStyle(decoration: TextDecoration.underline)
+                      : null,
+                )).marginOnly(left: 10),
+          ),
+          ElevatedButton(
+                  onPressed: () async {
+                    String? initialDirectory;
+                    if (Directory(dir).existsSync()) {
+                      initialDirectory = dir;
+                    }
+                    String? selectedDirectory =
+                        await FilePicker.platform.getDirectoryPath(
+                            initialDirectory: initialDirectory);
+                    if (selectedDirectory != null) {
+                      await bind.mainSetLocalOption(
+                          key: kOptionReportSaveDirectory,
+                          value: selectedDirectory);
+                      setState(() {});
+                    }
+                  },
+                  child: Text(translate('Change')))
+              .marginOnly(left: 5),
+        ],
+      ).marginOnly(left: _kContentHMargin),
+    ]);
   }
 
   Widget language() {

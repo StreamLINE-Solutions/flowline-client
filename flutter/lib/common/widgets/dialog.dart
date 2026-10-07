@@ -14,6 +14,7 @@ import 'package:flutter_hbb/models/peer_tab_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_hbb/utils/http_service.dart' as http;
 
 import '../../common.dart';
@@ -1646,7 +1647,10 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
   final selectedTags = <String>{};
   var generating = false;
   var transcribing = false;
+  var savingPdf = false;
   String? report;
+  int? reportId;
+  String? savedPdfPath;
   String? error;
   Process? recorder;
   String? dictationPath;
@@ -1681,6 +1685,29 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
       close(false);
     }
 
+    Future<void> savePdf() async {
+      final id = reportId;
+      if (id == null || savingPdf) return;
+      setState(() {
+        savingPdf = true;
+        error = null;
+      });
+      try {
+        final path = await apiSaveInterventionPdf(id);
+        setState(() => savedPdfPath = path);
+      } catch (e) {
+        setState(() => error = e.toString());
+      } finally {
+        setState(() => savingPdf = false);
+      }
+    }
+
+    Future<void> openPdf() async {
+      final path = savedPdfPath;
+      if (path == null) return;
+      await launchUrl(Uri.file(path));
+    }
+
     Future<void> generate() async {
       if (generating || transcribing) return;
       if (controller.text.trim().isEmpty && selectedTags.isEmpty) {
@@ -1693,7 +1720,7 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
         error = null;
       });
       try {
-        final text = await apiGenerateInterventionReport(
+        final res = await apiGenerateInterventionReport(
           notes: controller.text.trim(),
           tags: selectedTags.toList(),
           peerId: peerId,
@@ -1702,9 +1729,13 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
           endedAt: DateTime.now(),
         );
         setState(() {
-          report = text;
+          reportId = res.id;
+          report = res.report;
           generating = false;
         });
+        if (mainGetLocalBoolOptionSync(kOptionReportSavePdf)) {
+          await savePdf();
+        }
       } catch (e) {
         setState(() {
           error = e.toString();
@@ -1765,6 +1796,10 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
       buttons.add(dialogButton('Generate report',
           onPressed: (generating || transcribing) ? null : generate));
     } else {
+      if (savedPdfPath == null) {
+        buttons.add(dialogButton('Save PDF',
+            onPressed: savingPdf ? null : savePdf, isOutline: true));
+      }
       buttons.add(dialogButton('Finish', onPressed: skipDialog));
     }
 
@@ -1855,6 +1890,27 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
                   child: SelectionArea(child: Text(report!)),
                 ),
               ),
+              if (savedPdfPath != null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.check_circle,
+                        color: Colors.green, size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${translate('PDF saved to')}: $savedPdfPath',
+                        style: const TextStyle(fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: openPdf,
+                      child: Text(translate('Open')),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ],
         ),

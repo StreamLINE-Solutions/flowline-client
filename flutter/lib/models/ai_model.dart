@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_hbb/consts.dart';
 import 'package:http/http.dart' as http;
@@ -66,8 +67,9 @@ String _serverError(http.Response resp) {
   return 'HTTP ${resp.statusCode}';
 }
 
-/// Génère le rapport d'intervention (POST /api/ai/report) et renvoie son texte.
-Future<String> apiGenerateInterventionReport({
+/// Génère le rapport d'intervention (POST /api/ai/report).
+/// Renvoie l'id du rapport stocké côté serveur et son texte.
+Future<({int id, String report})> apiGenerateInterventionReport({
   required String notes,
   required List<String> tags,
   required String peerId,
@@ -100,9 +102,45 @@ Future<String> apiGenerateInterventionReport({
   );
   if (resp.statusCode == 200) {
     final data = jsonDecode(utf8.decode(resp.bodyBytes));
-    return data['report'] as String;
+    return (id: data['report_id'] as int, report: data['report'] as String);
   }
   throw Exception(_serverError(resp));
+}
+
+/// Dossier de sauvegarde des PDF de rapport : option client si définie,
+/// sinon `~/Documents/FlowLINE`.
+String reportDirectory() {
+  final configured =
+      bind.mainGetLocalOption(key: kOptionReportSaveDirectory).trim();
+  if (configured.isNotEmpty) {
+    return configured;
+  }
+  final home = Platform.environment['HOME'] ?? Directory.systemTemp.path;
+  return '$home/Documents/FlowLINE';
+}
+
+/// Télécharge le PDF du rapport (GET /api/ai/reports/{id}.pdf) et le
+/// sauvegarde dans le dossier configuré. Renvoie le chemin du fichier écrit.
+Future<String> apiSaveInterventionPdf(int reportId) async {
+  final apiServer = await bind.mainGetApiServer();
+  if (apiServer.isEmpty) {
+    throw Exception('API FlowLINE non configurée');
+  }
+  final resp = await http_service.get(
+    Uri.parse('$apiServer/api/ai/reports/$reportId.pdf'),
+    headers: getHttpHeaders(),
+  );
+  if (resp.statusCode != 200) {
+    throw Exception(_serverError(resp));
+  }
+  final dir = reportDirectory();
+  await Directory(dir).create(recursive: true);
+  final match = RegExp(r'filename="([^"]+)"')
+      .firstMatch(resp.headers['content-disposition'] ?? '');
+  final name = match?.group(1) ?? 'FlowLINE_CR_$reportId.pdf';
+  final path = '$dir/$name';
+  await File(path).writeAsBytes(resp.bodyBytes);
+  return path;
 }
 
 /// Transcrit un fichier audio (POST /api/ai/transcribe, multipart, `sovia-stt`).
