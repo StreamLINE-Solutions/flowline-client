@@ -104,6 +104,17 @@ class PeerPayload {
     });
   }
 
+  // 0034 : le client envoie `os = distribution_id()` (0036) — sur Linux c'est
+  // l'ID de distribution (pop, ubuntu, debian, ...), pas "linux". On mappe donc
+  // les distributions connues vers la plateforme Linux pour l'icône des cartes.
+  static const _linuxDistroIds = {
+    'almalinux', 'alpine', 'arch', 'bazzite', 'cachyos', 'centos', 'debian',
+    'deepin', 'elementary', 'endeavouros', 'fedora', 'garuda', 'gentoo',
+    'kali', 'linuxmint', 'manjaro', 'mx', 'nixos', 'opensuse', 'oracle',
+    'parrot', 'pop', 'raspbian', 'rhel', 'rocky', 'steamos', 'suse',
+    'ubuntu', 'void', 'zorin',
+  };
+
   static String? _platform(dynamic field) {
     if (field == null) {
       return null;
@@ -122,7 +133,8 @@ class PeerPayload {
       case 'android':
         return kPeerPlatformAndroid;
       default:
-        if (fieldStr.toLowerCase().contains('linux')) {
+        if (fieldStr.toLowerCase().contains('linux') ||
+            _linuxDistroIds.contains(os.toLowerCase())) {
           return kPeerPlatformLinux;
         }
         return null;

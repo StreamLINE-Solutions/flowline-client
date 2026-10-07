@@ -25,6 +25,8 @@ final peerCardUiType = PeerUiType.grid.obs;
 
 bool? hideUsernameOnCard;
 
+const kMeTag = 'Me';
+
 class _PeerCard extends StatefulWidget {
   final Peer peer;
   final PeerTabIndex tab;
@@ -248,14 +250,15 @@ class _PeerCardState extends State<_PeerCard>
       BuildContext context, Peer peer, Rx<BoxDecoration?>? deco) {
     hideUsernameOnCard ??=
         bind.mainGetBuildinOption(key: kHideUsernameOnCard) == 'Y';
-    final colors = _frontN(peer.tags, 25)
-        .map((e) => gFFI.abModel.getCurrentAbTagColor(e))
+    final displayTags = _displayTagsWithMe(peer);
+    final colors = _frontN(displayTags, 25)
+        .map((e) => _displayTagColor(context, e as String))
         .toList();
     return Tooltip(
       message: !(isDesktop || isWebDesktop)
           ? ''
-          : peer.tags.isNotEmpty
-              ? '${translate('Tags')}: ${peer.tags.join(', ')}'
+          : displayTags.isNotEmpty
+              ? '${translate('Tags')}: ${displayTags.map(_displayTagName).join(', ')}'
               : '',
       child: Stack(children: [
         Obx(
@@ -384,12 +387,13 @@ class _PeerCardState extends State<_PeerCard>
       ),
     );
 
-    final colors = _frontN(peer.tags, 25)
-        .map((e) => gFFI.abModel.getCurrentAbTagColor(e))
+    final displayTags = _displayTagsWithMe(peer);
+    final colors = _frontN(displayTags, 25)
+        .map((e) => _displayTagColor(context, e as String))
         .toList();
     return Tooltip(
-      message: peer.tags.isNotEmpty
-          ? '${translate('Tags')}: ${peer.tags.join(', ')}'
+      message: displayTags.isNotEmpty
+          ? '${translate('Tags')}: ${displayTags.map(_displayTagName).join(', ')}'
           : '',
       child: Stack(children: [
         child,
@@ -409,6 +413,26 @@ class _PeerCardState extends State<_PeerCard>
           )
       ]),
     );
+  }
+
+  List<String> _displayTagsWithMe(Peer peer) {
+    final tags = peer.tags.map((e) => e.toString()).toList();
+    final me = gFFI.userModel.userName.value;
+    if (me.isNotEmpty && peer.loginName == me) {
+      tags.insert(0, kMeTag);
+    }
+    return tags;
+  }
+
+  Color _displayTagColor(BuildContext context, String tag) {
+    if (tag == kMeTag) {
+      return MyTheme.color(context).me ?? MyTheme.accent;
+    }
+    return gFFI.abModel.getCurrentAbTagColor(tag);
+  }
+
+  String _displayTagName(String tag) {
+    return tag == kMeTag ? translate(tag) : tag;
   }
 
   List _frontN<T>(List list, int n) {
