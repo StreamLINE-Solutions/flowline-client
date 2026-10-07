@@ -66,7 +66,7 @@ class _MyGroupState extends State<MyGroup> {
               border:
                   Border.all(color: Theme.of(context).colorScheme.background)),
           child: Container(
-            width: 150,
+            width: 200,
             height: double.infinity,
             child: Column(
               children: [
