@@ -375,4 +375,25 @@ class GroupModel {
       deviceGroups.clear();
     }
   }
+
+  /// 0089 : ajoute/retire un device du parc partagé de l'équipe (entité).
+  /// Action manuelle du technicien — persistante côté serveur.
+  Future<bool> sharePeer(String id, bool share) async {
+    final api = "${await bind.mainGetApiServer()}/api/fleet/share";
+    try {
+      final headers = getHttpHeaders();
+      headers['Content-Type'] = 'application/json';
+      final resp = share
+          ? await http.post(Uri.parse(api),
+              headers: headers, body: jsonEncode({'id': id}))
+          : await http.delete(Uri.parse('$api/$id'), headers: headers);
+      if (resp.statusCode != 200) {
+        throw 'HTTP ${resp.statusCode}';
+      }
+      return true;
+    } catch (err) {
+      debugPrint('share peer $id (share=$share): $err');
+      return false;
+    }
+  }
 }

@@ -465,6 +465,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Empty Username", "Nom d’utilisation non renseigné"),
         ("Empty Password", "Mot de passe non renseigné"),
         ("Me", "Moi"),
+        ("Share with the team", "Partager avec l'équipe"),
+        ("Remove from the team", "Retirer de l'équipe"),
         ("identical_file_tip", "Ce fichier est identique à celui sur l’appareil distant."),
         ("show_monitors_tip", "Afficher les écrans dans la barre d’outils"),
         ("View Mode", "Mode vue"),

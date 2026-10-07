@@ -21,6 +21,8 @@ class Peer {
   String loginName; //login username
   String device_group_name;
   String note;
+  // 0089 : device dans le parc partagé de l'équipe (GroupPanel).
+  bool shared = false;
   bool? sameServer;
 
   String getId() {
@@ -45,6 +47,7 @@ class Peer {
         loginName = json['loginName'] ?? '',
         device_group_name = json['device_group_name'] ?? '',
         note = json['note'] is String ? json['note'] : '',
+        shared = json['shared'] == true,
         sameServer = json['same_server'];
 
   Map<String, dynamic> toJson() {
@@ -63,6 +66,7 @@ class Peer {
       'loginName': loginName,
       'device_group_name': device_group_name,
       'note': note,
+      'shared': shared,
       'same_server': sameServer,
     };
   }

@@ -137,6 +137,10 @@ class UserModel {
     displayName.value = user.displayName;
     avatar.value = user.avatar;
     isAdmin.value = user.isAdmin;
+    // 0089 : le GroupPanel est une vue équipe — masqué quand le plan n'a pas
+    // d'équipe (Essentiel). Lu par `isDisableGroupPanel()` à l'init des tabs.
+    bind.mainSetLocalOption(
+        key: 'disable-group-panel', value: user.hasTeam ? '' : 'Y');
     bind.mainSetLocalOption(key: 'user_info', value: jsonEncode(user));
     if (isWeb) {
       // ugly here, tmp solution

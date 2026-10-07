@@ -1364,9 +1364,32 @@ class MyGroupPeerCard extends BasePeerCard {
     //   menuItems.add(_unrememberPasswordAction(peer.id));
     // }
     if (gFFI.userModel.userName.isNotEmpty) {
+      menuItems.add(_shareWithTeamAction(context));
       menuItems.add(_addToAb(peer));
     }
     return menuItems;
+  }
+
+  // 0089 : ajoute/retire ce device du parc partagé de l'équipe (persistant
+  // côté serveur, visible par tous les techniciens de l'entité).
+  MenuEntryBase<String> _shareWithTeamAction(BuildContext context) {
+    final shared = peer.shared;
+    return MenuEntryButton<String>(
+      childBuilder: (TextStyle? style) => Text(
+        translate(shared ? 'Remove from the team' : 'Share with the team'),
+        style: style,
+      ),
+      proc: () {
+        () async {
+          final ok = await gFFI.groupModel.sharePeer(peer.id, !shared);
+          if (ok) {
+            _update();
+          }
+        }();
+      },
+      padding: menuPadding,
+      dismissOnClicked: true,
+    );
   }
 
   @protected

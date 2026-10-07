@@ -32,6 +32,9 @@ class UserPayload {
   String? verifier;
   UserStatus status;
   bool isAdmin = false;
+  // 0089 : capacité plan — le GroupPanel (vue équipe) est masqué sans équipe
+  // (Essentiel). Défaut permissif : champ absent → true (serveur antérieur).
+  bool hasTeam = true;
 
   UserPayload.fromJson(Map<String, dynamic> json)
       : name = json['name'] ?? '',
@@ -45,7 +48,8 @@ class UserPayload {
             : json['status'] == -1
                 ? UserStatus.kUnverified
                 : UserStatus.kNormal,
-        isAdmin = json['is_admin'] == true;
+        isAdmin = json['is_admin'] == true,
+        hasTeam = json['has_team'] is bool ? json['has_team'] : true;
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> map = {
@@ -82,6 +86,8 @@ class PeerPayload {
   String user_name = '';
   String? device_group_name;
   String note = '';
+  // 0089 : device dans le parc partagé de l'entité (groupe du GroupPanel).
+  bool shared = false;
 
   PeerPayload.fromJson(Map<String, dynamic> json)
       : id = json['id'] ?? '',
@@ -90,7 +96,8 @@ class PeerPayload {
         user = json['user'] ?? '',
         user_name = json['user_name'] ?? '',
         device_group_name = json['device_group_name'] ?? '',
-        note = json['note'] ?? '';
+        note = json['note'] ?? '',
+        shared = json['shared'] == true;
 
   static Peer toPeer(PeerPayload p) {
     return Peer.fromJson({
@@ -101,6 +108,7 @@ class PeerPayload {
       "hostname": p.info['device_name'],
       "device_group_name": p.device_group_name,
       "note": p.note,
+      "shared": p.shared,
     });
   }
 

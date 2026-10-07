@@ -463,6 +463,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Empty Username", ""),
         ("Empty Password", ""),
         ("Me", ""),
+        ("Share with the team", ""),
+        ("Remove from the team", ""),
         ("identical_file_tip", ""),
         ("show_monitors_tip", ""),
         ("View Mode", ""),
