@@ -418,7 +418,10 @@ class _PeerCardState extends State<_PeerCard>
   List<String> _displayTagsWithMe(Peer peer) {
     final tags = peer.tags.map((e) => e.toString()).toList();
     final me = gFFI.userModel.userName.value;
-    if (me.isNotEmpty && peer.loginName == me) {
+    // 0034 : « mes appareils » = machines rattachées à mon compte ET dont la
+    // session locale est mon utilisateur (ex. lus@pop-os) — sinon toutes les
+    // machines rattachées au compte (tests, support) porteraient le tag.
+    if (me.isNotEmpty && peer.loginName == me && peer.username == me) {
       tags.insert(0, kMeTag);
     }
     return tags;
