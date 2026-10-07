@@ -42,6 +42,20 @@ Future<bool> isPocAiBuild() async {
       apiServer.startsWith('http://127.0.0.1');
 }
 
+/// Langue de dictée : option du client si définie, sinon locale système
+/// (normalisée en ISO-639-1 ; vide si indéterminable → le serveur décide).
+///
+/// Sans langue explicite, le modèle SovIA traduit la dictée au lieu de la
+/// transcrire (constat 07/10) : on envoie donc toujours la langue du client.
+String dictationLanguage() {
+  var lang = bind.mainGetLocalOption(key: kCommConfKeyLang).trim().toLowerCase();
+  if (lang.isEmpty || lang == 'default') {
+    lang = localeName;
+  }
+  final code = lang.split(RegExp(r'[-_]')).first;
+  return RegExp(r'^[a-z]{2}$').hasMatch(code) ? code : '';
+}
+
 String _serverError(http.Response resp) {
   try {
     final data = jsonDecode(utf8.decode(resp.bodyBytes));
@@ -104,7 +118,7 @@ Future<String> apiTranscribeAudio(String filePath) async {
   request.headers.addAll(getHttpHeaders());
   // Langue de l'interface : force la langue de transcription (sinon le
   // modèle traduit la dictée au lieu de la transcrire).
-  final lang = bind.mainGetLocalOption(key: kCommConfKeyLang);
+  final lang = dictationLanguage();
   if (lang.isNotEmpty) {
     request.fields['language'] = lang;
   }
