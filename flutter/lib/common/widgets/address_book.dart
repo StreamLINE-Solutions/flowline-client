@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
-import 'package:dynamic_layouts/dynamic_layouts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common/formatter/id_formatter.dart';
 import 'package:flutter_hbb/common/hbbs/hbbs.dart';
@@ -13,7 +12,6 @@ import 'package:flutter_hbb/desktop/widgets/popup_menu.dart';
 import 'package:flutter_hbb/models/ab_model.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
-import 'package:url_launcher/url_launcher_string.dart';
 import '../../desktop/widgets/material_mod_popup_menu.dart' as mod_menu;
 import 'package:get/get.dart';
 import 'package:flex_color_picker/flex_color_picker.dart';
@@ -340,18 +338,16 @@ class _AddressBookState extends State<AddressBook> {
             showActionMenu: editPermission);
       }
 
-      gridView(bool isPortrait) => DynamicGridView.builder(
+      // Liste verticale : un tag par ligne (colonne), fond ajusté au texte.
+      listView(bool isPortrait) => ListView.builder(
           shrinkWrap: isPortrait,
-          gridDelegate: SliverGridDelegateWithWrapping(),
           itemCount: tags.length,
-          itemBuilder: (BuildContext context, int index) {
-            final e = tags[index];
-            return tagBuilder(e);
-          });
+          itemBuilder: (BuildContext context, int index) => Align(
+              alignment: Alignment.centerLeft, child: tagBuilder(tags[index])));
       final maxHeight = max(MediaQuery.of(context).size.height / 6, 100.0);
       return Obx(() => stateGlobal.isPortrait.isFalse
-          ? gridView(false)
-          : LimitedBox(maxHeight: maxHeight, child: gridView(true)));
+          ? listView(false)
+          : LimitedBox(maxHeight: maxHeight, child: listView(true)));
     });
   }
 
@@ -430,15 +426,6 @@ class _AddressBookState extends State<AddressBook> {
         sortMenuItem(), // It's already sorted after pulling down
       if (canWrite) syncMenuItem(),
       filterMenuItem(),
-      if (!gFFI.abModel.legacyMode.value && canWrite)
-        MenuEntryDivider<String>(),
-      if (!gFFI.abModel.legacyMode.value && canWrite)
-        getEntry(translate("ab_web_console_tip"), () async {
-          final url = await bind.mainGetApiServer();
-          if (await canLaunchUrlString(url)) {
-            launchUrlString(url);
-          }
-        }),
     ];
 
     mod_menu.showMenu(
