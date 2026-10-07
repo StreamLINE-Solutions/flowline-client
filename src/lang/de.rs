@@ -466,6 +466,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Me", "Ich"),
         ("Share with the team", "Mit dem Team teilen"),
         ("Remove from the team", "Aus dem Team entfernen"),
+        ("All devices", "Alle Geräte"),
         ("identical_file_tip", "Diese Datei ist identisch mit der Datei der Gegenstelle."),
         ("show_monitors_tip", "Bildschirme in der Symbolleiste anzeigen"),
         ("View Mode", "Ansichtsmodus"),

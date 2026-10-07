@@ -180,11 +180,14 @@ class _MyGroupState extends State<MyGroup> {
       }).toList();
       listView(bool isPortrait) => ListView.builder(
           shrinkWrap: isPortrait,
-          itemCount: deviceGroupItems.length + userItems.length,
-          itemBuilder: (context, index) => index < deviceGroupItems.length
-              ? _buildDeviceGroupItem(deviceGroupItems[index])
-              : _buildUserItem(userItems[index - deviceGroupItems.length],
-                  displayNameCount));
+          itemCount: 1 + deviceGroupItems.length + userItems.length,
+          itemBuilder: (context, index) => index == 0
+              ? _buildAllItem()
+              : index <= deviceGroupItems.length
+                  ? _buildDeviceGroupItem(deviceGroupItems[index - 1])
+                  : _buildUserItem(
+                      userItems[index - 1 - deviceGroupItems.length],
+                      displayNameCount));
       var maxHeight = max(MediaQuery.of(context).size.height / 6, 100.0);
       return Obx(() => stateGlobal.isPortrait.isFalse
           ? listView(false)
@@ -260,6 +263,39 @@ class _MyGroupState extends State<MyGroup> {
                     ),
                   ),
                 if (!isMe) Expanded(child: Text(displayName)),
+              ],
+            ).paddingSymmetric(vertical: 4),
+          ),
+        );
+      },
+    )).marginSymmetric(horizontal: 12).marginOnly(bottom: 6);
+  }
+
+  Widget _buildAllItem() {
+    return InkWell(onTap: () {
+      isSelectedDeviceGroup.value = false;
+      selectedAccessibleItemName.value = '';
+    }, child: Obx(
+      () {
+        bool selected = selectedAccessibleItemName.value.isEmpty;
+        return Container(
+          decoration: BoxDecoration(
+            color: selected ? MyTheme.color(context).highlight : null,
+            border: Border(
+                bottom: BorderSide(
+                    width: 0.7,
+                    color: Theme.of(context).dividerColor.withOpacity(0.1))),
+          ),
+          child: Container(
+            child: Row(
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  child:
+                      Icon(Icons.select_all, color: MyTheme.accent, size: 19),
+                ).marginOnly(right: 4),
+                Expanded(child: Text(translate('All devices'))),
               ],
             ).paddingSymmetric(vertical: 4),
           ),
