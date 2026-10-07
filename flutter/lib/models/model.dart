@@ -1052,6 +1052,14 @@ class FfiModel with ChangeNotifier {
   showMsgBox(SessionID sessionId, String type, String title, String text,
       String link, bool hasRetry, OverlayDialogManager dialogManager,
       {bool? hasCancel}) async {
+    // POC 0092 : rapport d'intervention a toute fin de session, y compris
+    // deconnexion declenchee par le pair (builds dev uniquement, une seule
+    // popup par session — cf. ai_model.dart).
+    if ((title == "Connection Error" || type == "restarting") &&
+        parent.target != null &&
+        pi.isSet.isTrue) {
+      await showInterventionReportDialog(ffi: parent.target!);
+    }
     final noteAllowed = parent.target != null &&
         allowAskForNoteAtEndOfConnection(parent.target, false) &&
         (title == "Connection Error" || type == "restarting");

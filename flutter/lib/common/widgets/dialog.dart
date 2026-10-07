@@ -1634,6 +1634,10 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
   if (!await isPocAiBuild()) {
     return false;
   }
+  if (isSessionReportShown(ffi.sessionId)) {
+    return false;
+  }
+  markSessionReportShown(ffi.sessionId);
   final startedAt = sessionStartTime(ffi.sessionId);
   final peerId = ffi.id;
   final pi = ffi.ffiModel.pi;
@@ -1666,7 +1670,7 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
     }
   }
 
-  return await ffi.dialogManager.show<bool>((setState, close, context) {
+  final res = await ffi.dialogManager.show<bool>((setState, close, context) {
     Future<void> cancelDialog() async {
       await stopRecorder();
       close(true);
@@ -1860,6 +1864,11 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
     );
   }) ??
       false;
+  if (res) {
+    // Annulation : la session continue, on pourra reproposer le rapport.
+    clearSessionReportShown(ffi.sessionId);
+  }
+  return res;
 }
 
 // POC 0092 : même helper que desktopTryShowTabAuditDialogCloseCancelled pour

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_hbb/consts.dart';
 import 'package:http/http.dart' as http;
 
 import '../common.dart';
@@ -13,12 +14,25 @@ import 'platform_model.dart';
 /// viendra ensuite — l'API refuse déjà les clients sans opt-in).
 
 final Map<SessionID, DateTime> _sessionStarts = {};
+final Set<SessionID> _sessionReportShown = {};
 
 void markSessionStart(SessionID sessionId) {
   _sessionStarts[sessionId] = DateTime.now();
+  _sessionReportShown.remove(sessionId);
 }
 
 DateTime? sessionStartTime(SessionID sessionId) => _sessionStarts[sessionId];
+
+/// Une seule popup de rapport par session (fermeture locale ou distante).
+bool isSessionReportShown(SessionID sessionId) =>
+    _sessionReportShown.contains(sessionId);
+
+void markSessionReportShown(SessionID sessionId) =>
+    _sessionReportShown.add(sessionId);
+
+/// Annulation : la session continue, le rapport pourra être reproposé.
+void clearSessionReportShown(SessionID sessionId) =>
+    _sessionReportShown.remove(sessionId);
 
 /// Build POC : API locale (dev). Les builds de production ne déclenchent pas
 /// la popup de rapport pour l'instant.
@@ -88,6 +102,12 @@ Future<String> apiTranscribeAudio(String filePath) async {
     Uri.parse('$apiServer/api/ai/transcribe'),
   );
   request.headers.addAll(getHttpHeaders());
+  // Langue de l'interface : force la langue de transcription (sinon le
+  // modèle traduit la dictée au lieu de la transcrire).
+  final lang = bind.mainGetLocalOption(key: kCommConfKeyLang);
+  if (lang.isNotEmpty) {
+    request.fields['language'] = lang;
+  }
   request.files.add(await http.MultipartFile.fromPath('file', filePath));
   final streamed = await request.send();
   final resp = await http.Response.fromStream(streamed);
