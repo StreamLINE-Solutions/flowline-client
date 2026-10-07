@@ -849,9 +849,6 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
       toolbarItems.add(_KeyboardMenu(id: widget.id, ffi: widget.ffi));
     }
     toolbarItems.add(_ChatMenu(id: widget.id, ffi: widget.ffi));
-    if (!isWeb) {
-      toolbarItems.add(_VoiceCallMenu(id: widget.id, ffi: widget.ffi));
-    }
     if (!isWeb) toolbarItems.add(_RecordMenu());
     toolbarItems.add(_CloseMenu(id: widget.id, ffi: widget.ffi));
     final toolbarBorderRadius = BorderRadius.all(Radius.circular(4.0));
@@ -2608,7 +2605,7 @@ class _ChatMenuState extends State<_ChatMenu> {
           ffi: widget.ffi,
           color: _ToolbarTheme.blueColor,
           hoverColor: _ToolbarTheme.hoverBlueColor,
-          menuChildrenGetter: (_) => [textChat(), voiceCall()]);
+          menuChildrenGetter: (_) => [textChat()]);
     }
   }
 
@@ -2641,95 +2638,6 @@ class _ChatMenuState extends State<_ChatMenu> {
     widget.ffi.chatModel
         .changeCurrentKey(MessageKey(widget.ffi.id, ChatModel.clientModeID));
     widget.ffi.chatModel.toggleChatOverlay(chatInitPos: initPos);
-  }
-
-  voiceCall() {
-    return MenuButton(
-      child: Text(translate('Voice call')),
-      ffi: widget.ffi,
-      onPressed: () =>
-          bind.sessionRequestVoiceCall(sessionId: widget.ffi.sessionId),
-    );
-  }
-}
-
-class _VoiceCallMenu extends StatelessWidget {
-  final String id;
-  final FFI ffi;
-  _VoiceCallMenu({
-    Key? key,
-    required this.id,
-    required this.ffi,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    menuChildrenGetter(_IconSubmenuButtonState state) {
-      final audioInput = AudioInput(
-        builder: (devices, currentDevice, setDevice) {
-          return Column(
-            children: devices
-                .map((d) => RdoMenuButton<String>(
-                      child: Container(
-                        child: Text(
-                          d,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        constraints: BoxConstraints(maxWidth: 250),
-                      ),
-                      value: d,
-                      groupValue: currentDevice,
-                      onChanged: (v) {
-                        if (v != null) setDevice(v);
-                      },
-                      ffi: ffi,
-                    ))
-                .toList(),
-          );
-        },
-        isCm: false,
-        isVoiceCall: true,
-      );
-      return [
-        audioInput,
-        Divider(),
-        MenuButton(
-          child: Text(translate('End call')),
-          onPressed: () => bind.sessionCloseVoiceCall(sessionId: ffi.sessionId),
-          ffi: ffi,
-        ),
-      ];
-    }
-
-    return Obx(
-      () {
-        switch (ffi.chatModel.voiceCallStatus.value) {
-          case VoiceCallStatus.waitingForResponse:
-            return buildCallWaiting(context);
-          case VoiceCallStatus.connected:
-            return _IconSubmenuButton(
-              tooltip: 'Voice call',
-              svg: 'assets/voice_call.svg',
-              color: _ToolbarTheme.blueColor,
-              hoverColor: _ToolbarTheme.hoverBlueColor,
-              menuChildrenGetter: menuChildrenGetter,
-              ffi: ffi,
-            );
-          default:
-            return Offstage();
-        }
-      },
-    );
-  }
-
-  Widget buildCallWaiting(BuildContext context) {
-    return _IconMenuButton(
-      assetName: "assets/call_wait.svg",
-      tooltip: "Waiting",
-      onPressed: () => bind.sessionCloseVoiceCall(sessionId: ffi.sessionId),
-      color: _ToolbarTheme.redColor,
-      hoverColor: _ToolbarTheme.hoverRedColor,
-    );
   }
 }
 
