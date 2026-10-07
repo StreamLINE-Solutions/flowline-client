@@ -1873,10 +1873,6 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
                     ],
                   ],
                 ),
-              if (error != null) ...[
-                const SizedBox(height: 8),
-                Text(error!, style: const TextStyle(color: Colors.red)),
-              ],
               if (generating) ...[
                 const SizedBox(height: 8),
                 const LinearProgressIndicator(),
@@ -1911,6 +1907,10 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
                   ],
                 ),
               ],
+            ],
+            if (error != null) ...[
+              const SizedBox(height: 8),
+              Text(error!, style: const TextStyle(color: Colors.red)),
             ],
           ],
         ),

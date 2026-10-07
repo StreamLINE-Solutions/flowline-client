@@ -119,27 +119,31 @@ String reportDirectory() {
   return '$home/Documents/FlowLINE';
 }
 
-/// Télécharge le PDF du rapport (GET /api/ai/reports/{id}.pdf) et le
-/// sauvegarde dans le dossier configuré. Renvoie le chemin du fichier écrit.
+/// Télécharge le PDF du rapport et le sauvegarde dans le dossier configuré.
+/// Renvoie le chemin du fichier écrit.
+///
+/// Le PDF arrive en base64 dans un JSON : le transport HTTP du client (chemin
+/// Rust, proxys SOCKS/TCP) convertit les corps binaires en texte lossy, ce qui
+/// corrompt un PDF brut (rejeté ensuite par l'encodage latin1 côté Dart).
 Future<String> apiSaveInterventionPdf(int reportId) async {
   final apiServer = await bind.mainGetApiServer();
   if (apiServer.isEmpty) {
     throw Exception('API FlowLINE non configurée');
   }
   final resp = await http_service.get(
-    Uri.parse('$apiServer/api/ai/reports/$reportId.pdf'),
+    Uri.parse('$apiServer/api/ai/reports/$reportId/pdf'),
     headers: getHttpHeaders(),
   );
   if (resp.statusCode != 200) {
     throw Exception(_serverError(resp));
   }
+  final data = jsonDecode(utf8.decode(resp.bodyBytes));
+  final bytes = base64Decode(data['content_base64'] as String);
+  final name = (data['filename'] as String?) ?? 'FlowLINE_CR_$reportId.pdf';
   final dir = reportDirectory();
   await Directory(dir).create(recursive: true);
-  final match = RegExp(r'filename="([^"]+)"')
-      .firstMatch(resp.headers['content-disposition'] ?? '');
-  final name = match?.group(1) ?? 'FlowLINE_CR_$reportId.pdf';
   final path = '$dir/$name';
-  await File(path).writeAsBytes(resp.bodyBytes);
+  await File(path).writeAsBytes(bytes);
   return path;
 }
 
