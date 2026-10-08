@@ -183,7 +183,7 @@ jobs:
         # fallback sur comparaison de chaînes. Regex robuste (indentation
         # réelle détectée, aucun espace en dur).
         run: |
-          sudo apt-get install -y --no-install-recommends libarchive-tools squashfs-tools zsync >/dev/null
+          sudo apt-get install -y --no-install-recommends libarchive-tools squashfs-tools zsync patch >/dev/null
           rm -rf /tmp/appimage-venv
           python3 -m venv /tmp/appimage-venv
           /tmp/appimage-venv/bin/pip install --quiet appimage-builder
@@ -221,10 +221,20 @@ jobs:
           # Renommé tout de suite : le build support réécrit flowline-<version>.deb.
           mv "flowline-${{ env.VERSION }}.deb" flowline-technicien.deb
 
+      - name: Build patched AppRun (#16330)
+        # L'AppRun v2.0.0 téléchargé par appimage-builder copie chaque argument
+        # dans un buffer de pile de 1 Kio → tout argument >= 1024 octets abortait
+        # l'AppImage (« buffer overflow detected ») avant même le démarrage.
+        # build-apprun.sh compile l'AppRun patché dans appimage/appimage-build/,
+        # le cache que lit --build-dir (voir étapes AppImage ci-dessous).
+        run: appimage/build-apprun.sh x86_64
+
       - name: Build AppImage (technicien)
         run: |
           cp flowline-technicien.deb flowline.deb
-          /tmp/appimage-venv/bin/appimage-builder --recipe appimage/AppImageBuilder-x86_64.yml --skip-tests
+          /tmp/appimage-venv/bin/appimage-builder --recipe appimage/AppImageBuilder-x86_64.yml --build-dir appimage/appimage-build --skip-tests
+          # Vérifie que l'AppRun embarqué est bien celui compilé ici (#16330).
+          cmp AppDir/AppRun appimage/appimage-build/AppRun/v2.0.0/AppRun-Release-x86_64
           mv FlowLINE-${{ env.VERSION }}-x86_64.AppImage flowline-technicien.AppImage
 
       - name: Build FlowLINE Support (QuickSupport)
@@ -241,7 +251,8 @@ jobs:
       - name: Build AppImage (Support)
         run: |
           cp flowline-support.deb flowline.deb
-          /tmp/appimage-venv/bin/appimage-builder --recipe appimage/AppImageBuilder-x86_64.yml --skip-tests
+          /tmp/appimage-venv/bin/appimage-builder --recipe appimage/AppImageBuilder-x86_64.yml --build-dir appimage/appimage-build --skip-tests
+          cmp AppDir/AppRun appimage/appimage-build/AppRun/v2.0.0/AppRun-Release-x86_64
           mv FlowLINE-${{ env.VERSION }}-x86_64.AppImage flowline-support.AppImage
 
       - name: Upload FlowLINE artifact
