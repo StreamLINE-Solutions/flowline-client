@@ -1627,12 +1627,13 @@ Future<bool> desktopTryShowTabAuditDialogCloseCancelled(
   }
 }
 
-// POC 0092 : rapport d'intervention IA en fin de session (builds dev uniquement,
-// API locale — cf. ai_model.dart). Le technicien confirme au lieu de rédiger :
-// notes + tags + dictée (sovia-stt) -> CR généré par SovIA (sovia).
+// 0092/0104 : rapport d'intervention IA en fin de session — visible seulement
+// si le tech est connecté et a l'option IA (cf. ai_model.dart). Le technicien
+// confirme au lieu de rédiger : notes + tags + dictée (sovia-stt) -> CR SovIA.
 // Retour : true = annulé (ne pas fermer la session), false = continuer.
 Future<bool> showInterventionReportDialog({required FFI ffi}) async {
-  if (!await isPocAiBuild()) {
+  if (!gFFI.userModel.isLogin ||
+      bind.mainGetLocalOption(key: kOptionAiEnabled) != 'Y') {
     return false;
   }
   if (isSessionReportShown(ffi.sessionId)) {
@@ -1817,7 +1818,7 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
                 '${duration.isEmpty ? '' : '  •  ${translate('Session duration')}: $duration'}',
                 style: const TextStyle(fontSize: 13),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               TextField(
                 controller: controller,
                 minLines: 4,
@@ -1828,10 +1829,10 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
                   border: const OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 14),
               Wrap(
                 spacing: 8,
-                runSpacing: 4,
+                runSpacing: 6,
                 children: tags
                     .map((tag) => FilterChip(
                           label: Text(tag),
@@ -1846,8 +1847,10 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
                         ))
                     .toList(),
               ),
-              const SizedBox(height: 8),
-              if (Platform.isLinux)
+              const SizedBox(height: 12),
+              if (Platform.isLinux) ...[
+                const Divider(height: 1),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     OutlinedButton.icon(
@@ -1873,8 +1876,9 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
                     ],
                   ],
                 ),
+              ],
               if (generating) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 const LinearProgressIndicator(),
                 const SizedBox(height: 4),
                 Text(translate('Generating report...')),

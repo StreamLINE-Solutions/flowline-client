@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common/hbbs/hbbs.dart';
+import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/models/ab_model.dart';
 import 'package:get/get.dart';
 
@@ -143,6 +144,10 @@ class UserModel {
     // d'équipe (Essentiel). Lu par `isDisableGroupPanel()` à l'init des tabs.
     bind.mainSetLocalOption(
         key: 'disable-group-panel', value: user.hasTeam ? '' : 'Y');
+    // 0104 : option IA — mirror local du flag serveur, lu par le gating de la
+    // popup rapport + Settings > Report ('' = désactivé).
+    bind.mainSetLocalOption(
+        key: kOptionAiEnabled, value: user.aiEnabled ? 'Y' : '');
     bind.mainSetLocalOption(key: 'user_info', value: jsonEncode(user));
     if (isWeb) {
       // ugly here, tmp solution

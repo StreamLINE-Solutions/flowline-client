@@ -421,7 +421,12 @@ class _GeneralState extends State<_General> {
         if (!isWeb) hwcodec(),
         if (!isWeb) audio(context),
         if (!isWeb) record(context),
-        if (!isWeb) report(context),
+        // 0104 : carte Report visible seulement si le tech est connecté et a
+        // l'option IA (flag serveur mirroré en local au login/refresh).
+        if (!isWeb &&
+            gFFI.userModel.isLogin &&
+            bind.mainGetLocalOption(key: kOptionAiEnabled) == 'Y')
+          report(context),
         if (!isWeb) WaylandCard(),
         other()
       ],
@@ -831,7 +836,8 @@ class _GeneralState extends State<_General> {
     });
   }
 
-  // POC 0092 : rapport d'intervention PDF (dossier + sauvegarde automatique).
+  // 0092/0104 : rapport d'intervention PDF (dossier + sauvegarde automatique),
+  // visible seulement avec l'option IA (gating dans build()).
   Widget report(BuildContext context) {
     final dir = reportDirectory();
     final exists = Directory(dir).existsSync();

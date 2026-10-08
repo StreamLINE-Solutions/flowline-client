@@ -8,11 +8,12 @@ import '../common.dart';
 import '../utils/http_service.dart' as http_service;
 import 'platform_model.dart';
 
-/// POC 0092 — rapport d'intervention IA (SovIA) + dictée STT.
+/// 0092/0104 — rapport d'intervention IA (SovIA) + dictée STT.
 ///
-/// Actif uniquement sur les builds dev (API locale `http://localhost`) tant
-/// que la fonctionnalité n'est pas ouverte en production (le gating opt-in
-/// viendra ensuite — l'API refuse déjà les clients sans opt-in).
+/// Gating : la popup de fin de session et Settings > Report sont visibles
+/// seulement si le tech est connecté ET que son compte a l'option IA
+/// (`ai_enabled` serveur, mirror local `kOptionAiEnabled`). L'API refuse de
+/// toute façon les clients sans opt-in.
 
 final Map<SessionID, DateTime> _sessionStarts = {};
 final Set<SessionID> _sessionReportShown = {};
@@ -34,14 +35,6 @@ void markSessionReportShown(SessionID sessionId) =>
 /// Annulation : la session continue, le rapport pourra être reproposé.
 void clearSessionReportShown(SessionID sessionId) =>
     _sessionReportShown.remove(sessionId);
-
-/// Build POC : API locale (dev). Les builds de production ne déclenchent pas
-/// la popup de rapport pour l'instant.
-Future<bool> isPocAiBuild() async {
-  final apiServer = await bind.mainGetApiServer();
-  return apiServer.startsWith('http://localhost') ||
-      apiServer.startsWith('http://127.0.0.1');
-}
 
 /// Langue de dictée : option du client si définie, sinon locale système
 /// (normalisée en ISO-639-1 ; vide si indéterminable → le serveur décide).

@@ -35,6 +35,8 @@ class UserPayload {
   // 0089 : capacité plan — le GroupPanel (vue équipe) est masqué sans équipe
   // (Essentiel). Défaut permissif : champ absent → true (serveur antérieur).
   bool hasTeam = true;
+  // 0104 : option IA — défaut false : champ absent → pas d'IA (serveur antérieur).
+  bool aiEnabled = false;
 
   UserPayload.fromJson(Map<String, dynamic> json)
       : name = json['name'] ?? '',
@@ -49,7 +51,8 @@ class UserPayload {
                 ? UserStatus.kUnverified
                 : UserStatus.kNormal,
         isAdmin = json['is_admin'] == true,
-        hasTeam = json['has_team'] is bool ? json['has_team'] : true;
+        hasTeam = json['has_team'] is bool ? json['has_team'] : true,
+        aiEnabled = json['ai_enabled'] == true;
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> map = {
