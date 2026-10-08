@@ -1,6 +1,6 @@
 name: FlowLINE
 repository: https://github.com/StreamLINE-Solutions/flowline-client
-release_source: https://www.flowline.support/downloads/flowline-1.4.22-android.apk
+release_source: https://www.flowline.support/downloads/flowline-1.4.23-android.apk
 pubkey: npub1r2e3wdku9d39qdxrlqx35w7azad4s955wazfmgvgyphh2t0lglfqs05fmf
 icon: https://www.flowline.support/images/flowline-icon-512.png
 images:
