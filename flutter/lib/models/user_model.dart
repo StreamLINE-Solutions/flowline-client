@@ -44,6 +44,8 @@ class UserModel {
       //  For _updateLocalUserInfo, network error will be set later
       //  For login success, should clear network error
       networkError.value = '';
+      // 0105 : carnet + GroupPanel visibles seulement si le tech est connecté.
+      parent.target?.peerTabModel.setLoggedIn(p0.isNotEmpty);
     });
   }
 

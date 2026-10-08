@@ -37,18 +37,25 @@ class PeerTabModel with ChangeNotifier {
     IconFont.addressBook,
     IconFont.deviceGroupFill,
   ];
-  List<bool> isEnabled = List.from([
-    true,
-    true,
-    !isWeb && bind.mainGetLocalOption(key: "disable-discovery-panel") != "Y",
-    !(bind.isDisableAb() || bind.isDisableAccount()),
-    !(bind.isDisableGroupPanel() || bind.isDisableAccount()),
-  ]);
+  // 0105 : le carnet (ab) et le GroupPanel ne sont visibles que si le tech est
+  // connecté. État initial lu depuis la session locale, puis synchronisé par
+  // UserModel (userName.listen -> setLoggedIn).
+  bool _loggedIn = false;
+  bool get isLoggedIn => _loggedIn;
+
+  List<bool> get isEnabled => [
+        true,
+        true,
+        !isWeb && bind.mainGetLocalOption(key: "disable-discovery-panel") != "Y",
+        !(bind.isDisableAb() || bind.isDisableAccount()) && _loggedIn,
+        !(bind.isDisableGroupPanel() || bind.isDisableAccount()) && _loggedIn,
+      ];
   final List<bool> _isVisible = List.filled(maxTabCount, true, growable: false);
   List<bool> get isVisibleEnabled => () {
         final list = _isVisible.toList();
+        final enabled = isEnabled;
         for (int i = 0; i < maxTabCount; i++) {
-          list[i] = list[i] && isEnabled[i];
+          list[i] = list[i] && enabled[i];
         }
         return list;
       }();
@@ -68,6 +75,9 @@ class PeerTabModel with ChangeNotifier {
   String get lastId => _lastId;
 
   PeerTabModel(this.parent) {
+    // 0105 : session locale connue dès la construction (préserve l'onglet
+    // courant restauré si le tech est connecté).
+    _loggedIn = bind.mainGetLocalOption(key: 'access_token') != '';
     // visible
     try {
       final option = bind.getLocalFlutterOption(k: kOptionPeerTabVisible);
@@ -122,6 +132,14 @@ class PeerTabModel with ChangeNotifier {
       _currentTab = index;
       notifyListeners();
     }
+  }
+
+  // 0105 : synchronisé par UserModel (connexion / déconnexion / expiration).
+  void setLoggedIn(bool value) {
+    if (_loggedIn == value) return;
+    _loggedIn = value;
+    _trySetCurrentTabToFirstVisibleEnabled();
+    notifyListeners();
   }
 
   String tabTooltip(int index) {
