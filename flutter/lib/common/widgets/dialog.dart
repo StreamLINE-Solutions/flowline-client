@@ -1919,6 +1919,13 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
               const SizedBox(height: 8),
               Text(error!, style: const TextStyle(color: Colors.red)),
             ],
+            const SizedBox(height: 12),
+            Text(
+              translate(
+                  'Sovereign AI (Switzerland) — nothing goes anywhere else.'),
+              style: TextStyle(
+                  fontSize: 10, color: disabledTextColor(context, false)),
+            ),
           ],
         ),
       ),

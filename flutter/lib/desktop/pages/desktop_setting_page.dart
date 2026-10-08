@@ -421,11 +421,11 @@ class _GeneralState extends State<_General> {
         if (!isWeb) hwcodec(),
         if (!isWeb) audio(context),
         if (!isWeb) record(context),
-        // 0104 : carte Report visible seulement si le tech est connecte et a
-        // l'option IA (etat lu cote Rust : le token est partage entre fenetres).
-        if (!isWeb &&
-            bind.mainGetLocalOption(key: 'access_token').isNotEmpty &&
-            bind.mainGetLocalOption(key: kOptionAiEnabled) == 'Y')
+        // 0104/0092 : carte Report visible des que le tech est connecte (etat
+        // lu cote Rust : le token est partage entre fenetres). Avec l'option
+        // IA -> reglages PDF + mention IA souveraine ; sans l'option ->
+        // presentation + demande d'activation (note discrete, pas de pub).
+        if (!isWeb && bind.mainGetLocalOption(key: 'access_token').isNotEmpty)
           report(context),
         if (!isWeb) WaylandCard(),
         other()
@@ -837,11 +837,42 @@ class _GeneralState extends State<_General> {
   }
 
   // 0092/0104 : rapport d'intervention PDF (dossier + sauvegarde automatique),
-  // visible seulement avec l'option IA (gating dans build()).
+  // visible des que le tech est connecte (gating dans build()). Avec l'option
+  // IA : reglages + mention IA souveraine. Sans l'option : presentation de la
+  // fonction + demande d'activation (note discrete, jamais de pub intrusive).
   Widget report(BuildContext context) {
+    final enabled = bind.mainGetLocalOption(key: kOptionAiEnabled) == 'Y';
+    if (!enabled) {
+      return _Card(title: 'Report', children: [
+        Text(
+          translate(
+              'AI reports are not enabled for your company yet. At the end of a session, your technicians can generate a report (notes + dictation), review it, then send a PDF to the client.'),
+          style: TextStyle(color: disabledTextColor(context, false)),
+        ).marginOnly(left: _kContentHMargin),
+        Text(
+          translate(
+              'Sovereign AI (Switzerland): hosting and inference at ProximA-i LegalTech SA, Sierre (VS) — the model is self-hosted; nothing goes anywhere else.'),
+          style: TextStyle(
+              fontSize: 11, color: disabledTextColor(context, false)),
+        ).marginOnly(left: _kContentHMargin),
+        Row(
+          children: [
+            ElevatedButton(
+                onPressed: () => launchUrl(
+                    Uri.parse('https://www.flowline.support/#contact')),
+                child: Text(translate('Request activation'))),
+          ],
+        ).marginOnly(left: _kContentHMargin, top: 6),
+      ]);
+    }
     final dir = reportDirectory();
     final exists = Directory(dir).existsSync();
     return _Card(title: 'Report', children: [
+      Text(
+        translate(
+            'Sovereign AI (Switzerland): hosting and inference at ProximA-i LegalTech SA, Sierre (VS) — the model is self-hosted; nothing goes anywhere else.'),
+        style: TextStyle(fontSize: 11, color: disabledTextColor(context, false)),
+      ).marginOnly(left: _kContentHMargin),
       _OptionCheckBox(context, 'Save report as PDF after generation',
           kOptionReportSavePdf),
       Row(
