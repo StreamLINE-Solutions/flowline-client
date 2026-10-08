@@ -1632,15 +1632,6 @@ Future<bool> desktopTryShowTabAuditDialogCloseCancelled(
 // confirme au lieu de rédiger : notes + tags + dictée (sovia-stt) -> CR SovIA.
 // Retour : true = annulé (ne pas fermer la session), false = continuer.
 Future<bool> showInterventionReportDialog({required FFI ffi}) async {
-  // TEMP diag 0104 (a retirer apres validation) : trace chaque evaluation du
-  // gating (append) — relu ensuite dans FlowLINE_local.toml (option ai-diag).
-  {
-    final prev = bind.mainGetLocalOption(key: 'ai-diag').trim();
-    final entry =
-        '${DateTime.now().toIso8601String()} call sess=${ffi.sessionId} tok=${bind.mainGetLocalOption(key: 'access_token').isNotEmpty} login=${gFFI.userModel.isLogin} opt=${bind.mainGetLocalOption(key: kOptionAiEnabled)} shown=${isSessionReportShown(ffi.sessionId)}';
-    bind.mainSetLocalOption(
-        key: 'ai-diag', value: prev.isEmpty ? entry : '$prev | $entry');
-  }
   // 0104 : « connecte » lu cote RUST (option locale partagee entre la fenetre
   // principale et les fenetres de session — gFFI.userModel est vide dans
   // l'isolate d'une fenetre distante, le login vit dans la fenetre principale).
