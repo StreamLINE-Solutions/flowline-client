@@ -421,10 +421,10 @@ class _GeneralState extends State<_General> {
         if (!isWeb) hwcodec(),
         if (!isWeb) audio(context),
         if (!isWeb) record(context),
-        // 0104 : carte Report visible seulement si le tech est connecté et a
-        // l'option IA (flag serveur mirroré en local au login/refresh).
+        // 0104 : carte Report visible seulement si le tech est connecte et a
+        // l'option IA (etat lu cote Rust : le token est partage entre fenetres).
         if (!isWeb &&
-            gFFI.userModel.isLogin &&
+            bind.mainGetLocalOption(key: 'access_token').isNotEmpty &&
             bind.mainGetLocalOption(key: kOptionAiEnabled) == 'Y')
           report(context),
         if (!isWeb) WaylandCard(),

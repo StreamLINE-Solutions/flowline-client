@@ -1637,11 +1637,14 @@ Future<bool> showInterventionReportDialog({required FFI ffi}) async {
   {
     final prev = bind.mainGetLocalOption(key: 'ai-diag').trim();
     final entry =
-        '${DateTime.now().toIso8601String()} call sess=${ffi.sessionId} login=${gFFI.userModel.isLogin} opt=${bind.mainGetLocalOption(key: kOptionAiEnabled)} shown=${isSessionReportShown(ffi.sessionId)}';
+        '${DateTime.now().toIso8601String()} call sess=${ffi.sessionId} tok=${bind.mainGetLocalOption(key: 'access_token').isNotEmpty} login=${gFFI.userModel.isLogin} opt=${bind.mainGetLocalOption(key: kOptionAiEnabled)} shown=${isSessionReportShown(ffi.sessionId)}';
     bind.mainSetLocalOption(
         key: 'ai-diag', value: prev.isEmpty ? entry : '$prev | $entry');
   }
-  if (!gFFI.userModel.isLogin ||
+  // 0104 : « connecte » lu cote RUST (option locale partagee entre la fenetre
+  // principale et les fenetres de session — gFFI.userModel est vide dans
+  // l'isolate d'une fenetre distante, le login vit dans la fenetre principale).
+  if (bind.mainGetLocalOption(key: 'access_token') == '' ||
       bind.mainGetLocalOption(key: kOptionAiEnabled) != 'Y') {
     return false;
   }
