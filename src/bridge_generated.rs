@@ -5229,6 +5229,22 @@ impl support::IntoDart for EventToUI {
                 field0.into_into_dart().into_dart(),
                 field1.into_into_dart().into_dart(),
             ],
+            Self::Cursor {
+                id,
+                hotx,
+                hoty,
+                width,
+                height,
+                colors,
+            } => vec![
+                3.into_dart(),
+                id.into_into_dart().into_dart(),
+                hotx.into_into_dart().into_dart(),
+                hoty.into_into_dart().into_dart(),
+                width.into_into_dart().into_dart(),
+                height.into_into_dart().into_dart(),
+                colors.into_into_dart().into_dart(),
+            ],
         }
         .into_dart()
     }

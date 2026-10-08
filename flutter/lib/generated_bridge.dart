@@ -1751,6 +1751,14 @@ sealed class EventToUI with _$EventToUI {
     int field0,
     bool field1,
   ) = EventToUI_Texture;
+  const factory EventToUI.cursor(
+    String id,
+    int hotx,
+    int hoty,
+    int width,
+    int height,
+    Uint8List colors,
+  ) = EventToUI_Cursor;
 }
 
 class RustdeskImpl implements Rustdesk {
@@ -8083,6 +8091,15 @@ class RustdeskImpl implements Rustdesk {
         return EventToUI_Texture(
           _wire2api_usize(raw[1]),
           _wire2api_bool(raw[2]),
+        );
+      case 3:
+        return EventToUI_Cursor(
+          _wire2api_String(raw[1]),
+          _wire2api_i32(raw[2]),
+          _wire2api_i32(raw[3]),
+          _wire2api_i32(raw[4]),
+          _wire2api_i32(raw[5]),
+          _wire2api_uint_8_list(raw[6]),
         );
       default:
         throw Exception("unreachable");

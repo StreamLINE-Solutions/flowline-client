@@ -22,6 +22,7 @@ mixin _$EventToUI {
     required TResult Function(String field0) event,
     required TResult Function(int field0) rgba,
     required TResult Function(int field0, bool field1) texture,
+    required TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors) cursor,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -29,6 +30,7 @@ mixin _$EventToUI {
     TResult? Function(String field0)? event,
     TResult? Function(int field0)? rgba,
     TResult? Function(int field0, bool field1)? texture,
+    TResult? Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -36,6 +38,7 @@ mixin _$EventToUI {
     TResult Function(String field0)? event,
     TResult Function(int field0)? rgba,
     TResult Function(int field0, bool field1)? texture,
+    TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -44,6 +47,7 @@ mixin _$EventToUI {
     required TResult Function(EventToUI_Event value) event,
     required TResult Function(EventToUI_Rgba value) rgba,
     required TResult Function(EventToUI_Texture value) texture,
+    required TResult Function(EventToUI_Cursor value) cursor,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -51,6 +55,7 @@ mixin _$EventToUI {
     TResult? Function(EventToUI_Event value)? event,
     TResult? Function(EventToUI_Rgba value)? rgba,
     TResult? Function(EventToUI_Texture value)? texture,
+    TResult? Function(EventToUI_Cursor value)? cursor,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -58,6 +63,7 @@ mixin _$EventToUI {
     TResult Function(EventToUI_Event value)? event,
     TResult Function(EventToUI_Rgba value)? rgba,
     TResult Function(EventToUI_Texture value)? texture,
+    TResult Function(EventToUI_Cursor value)? cursor,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -148,6 +154,7 @@ class _$EventToUI_EventImpl implements EventToUI_Event {
     required TResult Function(String field0) event,
     required TResult Function(int field0) rgba,
     required TResult Function(int field0, bool field1) texture,
+    required TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors) cursor,
   }) {
     return event(field0);
   }
@@ -158,6 +165,7 @@ class _$EventToUI_EventImpl implements EventToUI_Event {
     TResult? Function(String field0)? event,
     TResult? Function(int field0)? rgba,
     TResult? Function(int field0, bool field1)? texture,
+    TResult? Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
   }) {
     return event?.call(field0);
   }
@@ -168,6 +176,7 @@ class _$EventToUI_EventImpl implements EventToUI_Event {
     TResult Function(String field0)? event,
     TResult Function(int field0)? rgba,
     TResult Function(int field0, bool field1)? texture,
+    TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
     required TResult orElse(),
   }) {
     if (event != null) {
@@ -182,6 +191,7 @@ class _$EventToUI_EventImpl implements EventToUI_Event {
     required TResult Function(EventToUI_Event value) event,
     required TResult Function(EventToUI_Rgba value) rgba,
     required TResult Function(EventToUI_Texture value) texture,
+    required TResult Function(EventToUI_Cursor value) cursor,
   }) {
     return event(this);
   }
@@ -192,6 +202,7 @@ class _$EventToUI_EventImpl implements EventToUI_Event {
     TResult? Function(EventToUI_Event value)? event,
     TResult? Function(EventToUI_Rgba value)? rgba,
     TResult? Function(EventToUI_Texture value)? texture,
+    TResult? Function(EventToUI_Cursor value)? cursor,
   }) {
     return event?.call(this);
   }
@@ -202,6 +213,7 @@ class _$EventToUI_EventImpl implements EventToUI_Event {
     TResult Function(EventToUI_Event value)? event,
     TResult Function(EventToUI_Rgba value)? rgba,
     TResult Function(EventToUI_Texture value)? texture,
+    TResult Function(EventToUI_Cursor value)? cursor,
     required TResult orElse(),
   }) {
     if (event != null) {
@@ -289,6 +301,7 @@ class _$EventToUI_RgbaImpl implements EventToUI_Rgba {
     required TResult Function(String field0) event,
     required TResult Function(int field0) rgba,
     required TResult Function(int field0, bool field1) texture,
+    required TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors) cursor,
   }) {
     return rgba(field0);
   }
@@ -299,6 +312,7 @@ class _$EventToUI_RgbaImpl implements EventToUI_Rgba {
     TResult? Function(String field0)? event,
     TResult? Function(int field0)? rgba,
     TResult? Function(int field0, bool field1)? texture,
+    TResult? Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
   }) {
     return rgba?.call(field0);
   }
@@ -309,6 +323,7 @@ class _$EventToUI_RgbaImpl implements EventToUI_Rgba {
     TResult Function(String field0)? event,
     TResult Function(int field0)? rgba,
     TResult Function(int field0, bool field1)? texture,
+    TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
     required TResult orElse(),
   }) {
     if (rgba != null) {
@@ -323,6 +338,7 @@ class _$EventToUI_RgbaImpl implements EventToUI_Rgba {
     required TResult Function(EventToUI_Event value) event,
     required TResult Function(EventToUI_Rgba value) rgba,
     required TResult Function(EventToUI_Texture value) texture,
+    required TResult Function(EventToUI_Cursor value) cursor,
   }) {
     return rgba(this);
   }
@@ -333,6 +349,7 @@ class _$EventToUI_RgbaImpl implements EventToUI_Rgba {
     TResult? Function(EventToUI_Event value)? event,
     TResult? Function(EventToUI_Rgba value)? rgba,
     TResult? Function(EventToUI_Texture value)? texture,
+    TResult? Function(EventToUI_Cursor value)? cursor,
   }) {
     return rgba?.call(this);
   }
@@ -343,6 +360,7 @@ class _$EventToUI_RgbaImpl implements EventToUI_Rgba {
     TResult Function(EventToUI_Event value)? event,
     TResult Function(EventToUI_Rgba value)? rgba,
     TResult Function(EventToUI_Texture value)? texture,
+    TResult Function(EventToUI_Cursor value)? cursor,
     required TResult orElse(),
   }) {
     if (rgba != null) {
@@ -438,6 +456,7 @@ class _$EventToUI_TextureImpl implements EventToUI_Texture {
     required TResult Function(String field0) event,
     required TResult Function(int field0) rgba,
     required TResult Function(int field0, bool field1) texture,
+    required TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors) cursor,
   }) {
     return texture(field0, field1);
   }
@@ -448,6 +467,7 @@ class _$EventToUI_TextureImpl implements EventToUI_Texture {
     TResult? Function(String field0)? event,
     TResult? Function(int field0)? rgba,
     TResult? Function(int field0, bool field1)? texture,
+    TResult? Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
   }) {
     return texture?.call(field0, field1);
   }
@@ -458,6 +478,7 @@ class _$EventToUI_TextureImpl implements EventToUI_Texture {
     TResult Function(String field0)? event,
     TResult Function(int field0)? rgba,
     TResult Function(int field0, bool field1)? texture,
+    TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
     required TResult orElse(),
   }) {
     if (texture != null) {
@@ -472,6 +493,7 @@ class _$EventToUI_TextureImpl implements EventToUI_Texture {
     required TResult Function(EventToUI_Event value) event,
     required TResult Function(EventToUI_Rgba value) rgba,
     required TResult Function(EventToUI_Texture value) texture,
+    required TResult Function(EventToUI_Cursor value) cursor,
   }) {
     return texture(this);
   }
@@ -482,6 +504,7 @@ class _$EventToUI_TextureImpl implements EventToUI_Texture {
     TResult? Function(EventToUI_Event value)? event,
     TResult? Function(EventToUI_Rgba value)? rgba,
     TResult? Function(EventToUI_Texture value)? texture,
+    TResult? Function(EventToUI_Cursor value)? cursor,
   }) {
     return texture?.call(this);
   }
@@ -492,6 +515,7 @@ class _$EventToUI_TextureImpl implements EventToUI_Texture {
     TResult Function(EventToUI_Event value)? event,
     TResult Function(EventToUI_Rgba value)? rgba,
     TResult Function(EventToUI_Texture value)? texture,
+    TResult Function(EventToUI_Cursor value)? cursor,
     required TResult orElse(),
   }) {
     if (texture != null) {
@@ -510,5 +534,212 @@ abstract class EventToUI_Texture implements EventToUI {
   bool get field1;
   @JsonKey(ignore: true)
   _$$EventToUI_TextureImplCopyWith<_$EventToUI_TextureImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$EventToUI_CursorImplCopyWith<$Res> {
+  factory _$$EventToUI_CursorImplCopyWith(_$EventToUI_CursorImpl value,
+          $Res Function(_$EventToUI_CursorImpl) then) =
+      __$$EventToUI_CursorImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call(
+      {String id,
+      int hotx,
+      int hoty,
+      int width,
+      int height,
+      Uint8List colors});
+}
+
+/// @nodoc
+class __$$EventToUI_CursorImplCopyWithImpl<$Res>
+    extends _$EventToUICopyWithImpl<$Res, _$EventToUI_CursorImpl>
+    implements _$$EventToUI_CursorImplCopyWith<$Res> {
+  __$$EventToUI_CursorImplCopyWithImpl(_$EventToUI_CursorImpl _value,
+      $Res Function(_$EventToUI_CursorImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? hotx = null,
+    Object? hoty = null,
+    Object? width = null,
+    Object? height = null,
+    Object? colors = null,
+  }) {
+    return _then(_$EventToUI_CursorImpl(
+      null == id
+          ? _value.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      null == hotx
+          ? _value.hotx
+          : hotx // ignore: cast_nullable_to_non_nullable
+              as int,
+      null == hoty
+          ? _value.hoty
+          : hoty // ignore: cast_nullable_to_non_nullable
+              as int,
+      null == width
+          ? _value.width
+          : width // ignore: cast_nullable_to_non_nullable
+              as int,
+      null == height
+          ? _value.height
+          : height // ignore: cast_nullable_to_non_nullable
+              as int,
+      null == colors
+          ? _value.colors
+          : colors // ignore: cast_nullable_to_non_nullable
+              as Uint8List,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$EventToUI_CursorImpl implements EventToUI_Cursor {
+  const _$EventToUI_CursorImpl(this.id, this.hotx, this.hoty, this.width,
+      this.height, this.colors);
+
+  @override
+  final String id;
+  @override
+  final int hotx;
+  @override
+  final int hoty;
+  @override
+  final int width;
+  @override
+  final int height;
+  @override
+  final Uint8List colors;
+
+  @override
+  String toString() {
+    return 'EventToUI.cursor(id: $id, hotx: $hotx, hoty: $hoty, width: $width, height: $height, colors: $colors)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$EventToUI_CursorImpl &&
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.hotx, hotx) || other.hotx == hotx) &&
+            (identical(other.hoty, hoty) || other.hoty == hoty) &&
+            (identical(other.width, width) || other.width == width) &&
+            (identical(other.height, height) || other.height == height) &&
+            (identical(other.colors, colors) || other.colors == colors));
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(runtimeType, id, hotx, hoty, width, height, colors);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$EventToUI_CursorImplCopyWith<_$EventToUI_CursorImpl> get copyWith =>
+      __$$EventToUI_CursorImplCopyWithImpl<_$EventToUI_CursorImpl>(
+          this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String field0) event,
+    required TResult Function(int field0) rgba,
+    required TResult Function(int field0, bool field1) texture,
+    required TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors) cursor,
+  }) {
+    return cursor(id, hotx, hoty, width, height, colors);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String field0) event,
+    TResult? Function(int field0) rgba,
+    TResult? Function(int field0, bool field1) texture,
+    TResult? Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+  }) {
+    return cursor?.call(id, hotx, hoty, width, height, colors);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String field0)? event,
+    TResult Function(int field0)? rgba,
+    TResult Function(int field0, bool field1)? texture,
+    TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+    required TResult orElse(),
+  }) {
+    if (cursor != null) {
+      return cursor(id, hotx, hoty, width, height, colors);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(EventToUI_Event value) event,
+    required TResult Function(EventToUI_Rgba value) rgba,
+    required TResult Function(EventToUI_Texture value) texture,
+    required TResult Function(EventToUI_Cursor value) cursor,
+  }) {
+    return cursor(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(EventToUI_Event value)? event,
+    TResult? Function(EventToUI_Rgba value)? rgba,
+    TResult? Function(EventToUI_Texture value)? texture,
+    TResult? Function(EventToUI_Cursor value)? cursor,
+  }) {
+    return cursor?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(EventToUI_Event value)? event,
+    TResult Function(EventToUI_Rgba value)? rgba,
+    TResult Function(EventToUI_Texture value)? texture,
+    TResult Function(EventToUI_Cursor value)? cursor,
+    required TResult orElse(),
+  }) {
+    if (cursor != null) {
+      return cursor(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class EventToUI_Cursor implements EventToUI {
+  const factory EventToUI_Cursor(
+    final String id,
+    final int hotx,
+    final int hoty,
+    final int width,
+    final int height,
+    final Uint8List colors,
+  ) = _$EventToUI_CursorImpl;
+
+  @override
+  String get id;
+  int get hotx;
+  int get hoty;
+  int get width;
+  int get height;
+  Uint8List get colors;
+  @JsonKey(ignore: true)
+  _$$EventToUI_CursorImplCopyWith<_$EventToUI_CursorImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

@@ -7396,7 +7396,7 @@ dependencies = [
  "x11rb 0.12.0",
  "xxhash-rust",
  "zip",
- "zstd",
+ "zstd 0.13.1",
 ]
 
 [[package]]
