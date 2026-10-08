@@ -131,6 +131,12 @@ class _RemotePageState extends State<RemotePage>
           _ffi.ffiModel.pi.platform, _ffi.dialogManager);
       _ffi.recordingModel
           .updateStatus(bind.sessionGetIsRecording(sessionId: _ffi.sessionId));
+      // 0104 : (re)connexion etablie — re-armer la popup de rapport. Un blip
+      // reseau suivi d'une reconnexion automatique (meme session) dismiss la
+      // popup eventuelle via dialogManager.dismissAll() ; sans ce re-armement,
+      // le flag « popup deja montree » bloquerait la popup a la fermeture
+      // definitive de la session.
+      clearSessionReportShown(_ffi.sessionId);
     });
     _ffi.canvasModel.initializeEdgeScrollFallback(this);
     _ffi.start(
