@@ -3347,7 +3347,7 @@ impl Connection {
                                         .files
                                         .to_vec()
                                         .drain(..)
-                                        .map(|f| (f.name, f.modified_time))
+                                        .map(|f| (f.name, f.modified_time, f.size))
                                         .collect(),
                                     overwrite_detection: od,
                                     total_size: r.total_size,

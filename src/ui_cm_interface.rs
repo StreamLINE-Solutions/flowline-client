@@ -1010,6 +1010,7 @@ async fn handle_fs(
                 .map(|f| FileEntry {
                     name: f.0,
                     modified_time: f.1,
+                    size: f.2,
                     ..Default::default()
                 })
                 .collect();
