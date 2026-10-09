@@ -4051,50 +4051,43 @@ void checkUpdate() {
         stateGlobal.updateUrl.value = evt['url'];
       }
     });
-    // 1.4.21 (Option B v2) / 0074 : résultat de l'installation Linux via
-    // pkexec (updater.rs) — « ok » => carte fermée + message « relancez » ;
-    // « no-agent » (pas d'agent polkit) => commande manuelle à copier ;
-    // « cancelled » => message simple ; sinon message d'échec générique.
+    // 1.4.24 (0074) : résultat de l'installation Linux via gtk_sudo
+    // (updater.rs) — « ok » => carte fermée + message « relancez » ; tout
+    // échec (mot de passe refusé/annulé, sudo indisponible, erreur apt)
+    // => repli manuel : commande à copier.
     platformFFI.registerEventHandler(
         kFlowlineUpdateInstallFinish, kFlowlineUpdateInstallFinish,
         (Map<String, dynamic> evt) async {
-      final reason = evt['reason'];
       final path = evt['path'] is String ? evt['path'] as String : '';
       if (evt['status'] == 'ok') {
         stateGlobal.updateUrl.value = '';
         showUpdateInstallDialog('update-installed-restart-tip');
         return;
       }
-      if (reason == 'no-agent') {
-        final command = 'sudo apt install "$path"';
-        gFFI.dialogManager.show((setState, close, context) => CustomAlertDialog(
-              title: Text(translate('update-title'),
-                  style: TextStyle(fontSize: 21)),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(translate('update-install-no-agent-tip')),
-                  const SizedBox(height: 12),
-                  SelectableText(command,
-                      style: const TextStyle(fontFamily: 'monospace')),
-                ],
-              ),
-              actions: [
-                dialogButton(translate('update-copy-command'), onPressed: () {
-                  Clipboard.setData(ClipboardData(text: command));
-                  showToast(translate('Copied'));
-                  close();
-                }),
-                dialogButton('OK', onPressed: close),
+      final command = 'sudo apt install "$path"';
+      gFFI.dialogManager.show((setState, close, context) => CustomAlertDialog(
+            title: Text(translate('update-title'),
+                style: TextStyle(fontSize: 21)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(translate('update-install-manual-tip')),
+                const SizedBox(height: 12),
+                SelectableText(command,
+                    style: const TextStyle(fontFamily: 'monospace')),
               ],
-              onCancel: close,
-            ));
-        return;
-      }
-      showUpdateInstallDialog(reason == 'cancelled'
-          ? 'update-install-cancelled-tip'
-          : 'update-install-failed-tip');
+            ),
+            actions: [
+              dialogButton(translate('update-copy-command'), onPressed: () {
+                Clipboard.setData(ClipboardData(text: command));
+                showToast(translate('Copied'));
+                close();
+              }),
+              dialogButton('OK', onPressed: close),
+            ],
+            onCancel: close,
+          ));
     });
     Timer(const Duration(seconds: 1), () async {
       bind.mainGetSoftwareUpdateUrl();

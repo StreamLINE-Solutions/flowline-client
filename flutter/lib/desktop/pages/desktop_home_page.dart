@@ -446,9 +446,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       if (isToUpdate) {
         onPressed = () {
           if (isLinux) {
-            // 0072 (Option B) / 1.4.21 (v2) : téléchargement vérifié du
-            // paquet puis installation via pkexec/apt-get (prompt polkit),
-            // côté Rust ; résultat via l'événement
+            // 0072 (Option B) / 1.4.21 (v2) / 1.4.24 : téléchargement vérifié du
+            // paquet puis installation via gtk_sudo/apt-get (1.4.24, dialogue
+            // mot de passe GTK), côté Rust ; résultat via l'événement
             // flowline_update_install_finish (cf. checkUpdate).
             showToast(translate('update-downloading-tip'));
             bind.mainUpdateMe();

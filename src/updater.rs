@@ -491,10 +491,11 @@ fn xdg_open(target: &str) -> ResultType<()> {
     Ok(())
 }
 
-/// 0072 (Option B) / 1.4.21 (v2) : ouvre la mise à jour Linux — télécharge et
-/// vérifie le .deb puis l'installe via pkexec/apt-get (prompt polkit) ; repli
-/// sur l'ouverture de l'installateur système si pkexec est absent ; AppImage
-/// ou installation non système => ouvre la page de téléchargement du site.
+/// 0072 (Option B) / 1.4.21 (v2) / 1.4.24 : ouvre la mise à jour Linux —
+/// télécharge et vérifie le .deb puis l'installe via gtk_sudo/apt-get (1.4.24,
+/// cf. `install_linux_deb`) ; repli sur l'ouverture de l'installateur système
+/// si apt-get est absent ; AppImage ou installation non système => ouvre la
+/// page de téléchargement du site.
 #[cfg(target_os = "linux")]
 pub fn open_linux_update() -> ResultType<()> {
     if std::env::var_os("APPIMAGE").is_some() || !Path::new("/usr/bin/flowline").exists() {
@@ -516,57 +517,33 @@ pub fn open_linux_update() -> ResultType<()> {
     install_linux_deb(&path)
 }
 
-/// 1.4.21 (Option B v2) / 0074 : classe l'échec de `pkexec` pour l'UI —
-/// 127 ou « No authentication agent » => `no-agent` (aucun agent polkit dans
-/// la session), 126 => `cancelled` (annulé/refusé), sinon `failed`.
-#[cfg(target_os = "linux")]
-fn classify_pkexec_failure(code: Option<i32>, stderr: &str) -> &'static str {
-    if stderr.contains("No authentication agent") || code == Some(127) {
-        "no-agent"
-    } else if code == Some(126) {
-        "cancelled"
-    } else {
-        "failed"
-    }
-}
-
-/// 1.4.21 (Option B v2) / 0074 : installe le .deb vérifié via pkexec + apt-get
-/// (fenêtre de mot de passe polkit) ; si pkexec est absent, repli sur
-/// l'ouverture du fichier par l'installateur système (0072). Le résultat est
-/// remonté à l'UI Flutter via l'événement `flowline_update_install_finish`
-/// (status ok/error + reason no-agent/cancelled/failed + chemin du .deb) —
-/// cf. `checkUpdate()` côté Dart.
+/// 1.4.24 (0074) : installe le .deb vérifié via `gtk_sudo` (dialogue mot de
+/// passe GTK + `sudo` via pty, cf. `platform::linux::run_cmds_privileged`) ;
+/// repli sur l'ouverture du fichier par l'installateur système si apt-get est
+/// absent (0072). `pkexec` a été abandonné : l'UI est lancée par le service
+/// système, hors session logind, donc aucun agent polkit de session ne lui est
+/// visible (« No authentication agent found » garanti, même agent lancé — cf.
+/// ticket 0074). Le résultat est remonté à l'UI Flutter via l'événement
+/// `flowline_update_install_finish` (status ok/error + reason installed/failed
+/// + chemin du .deb) — cf. `checkUpdate()` côté Dart.
 #[cfg(target_os = "linux")]
 fn install_linux_deb(path: &Path) -> ResultType<()> {
-    const PKEXEC: &str = "/usr/bin/pkexec";
     const APT_GET: &str = "/usr/bin/apt-get";
-    if !Path::new(PKEXEC).exists() || !Path::new(APT_GET).exists() {
+    if !Path::new(APT_GET).exists() {
         return xdg_open(&path.to_string_lossy());
     }
-    let output = std::process::Command::new(PKEXEC)
-        .arg(APT_GET)
-        .args(["install", "-y"])
-        .arg(path)
-        .output();
-    let (ok, reason, message) = match output {
-        Ok(o) if o.status.success() => (true, "installed", "installed".to_owned()),
-        Ok(o) => {
-            let code = o.status.code();
-            let stderr = String::from_utf8_lossy(&o.stderr);
-            (
-                false,
-                classify_pkexec_failure(code, &stderr),
-                format!(
-                    "pkexec/apt-get exited with {}: {}",
-                    code.map_or_else(|| "signal".to_owned(), |c| c.to_string()),
-                    stderr.trim()
-                ),
-            )
-        }
-        Err(e) => (false, "failed", e.to_string()),
+    let cmd = format!(
+        "{APT_GET} install -y {}",
+        hbb_common::platform::linux::shell_quote(&path.to_string_lossy())
+    );
+    let ok = crate::platform::linux::run_cmds_privileged(&cmd);
+    let (reason, message) = if ok {
+        ("installed", "installed".to_owned())
+    } else {
+        ("failed", "gtk_sudo/apt-get failed".to_owned())
     };
     log::info!(
-        "Mise à jour Linux: installation de {} via pkexec/apt-get: {}",
+        "Mise à jour Linux: installation de {} via gtk_sudo/apt-get: {}",
         path.display(),
         message
     );
@@ -593,41 +570,6 @@ fn install_linux_deb(path: &Path) -> ResultType<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn classify_pkexec_no_agent() {
-        assert_eq!(classify_pkexec_failure(Some(127), ""), "no-agent");
-        assert_eq!(
-            classify_pkexec_failure(
-                Some(126),
-                "Error executing command as another user: No authentication agent found."
-            ),
-            "no-agent"
-        );
-    }
-
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn classify_pkexec_cancelled() {
-        assert_eq!(
-            classify_pkexec_failure(
-                Some(126),
-                "Error executing command as another user: Request dismissed"
-            ),
-            "cancelled"
-        );
-    }
-
-    #[cfg(target_os = "linux")]
-    #[test]
-    fn classify_pkexec_failed() {
-        assert_eq!(
-            classify_pkexec_failure(Some(100), "apt-get: boom"),
-            "failed"
-        );
-        assert_eq!(classify_pkexec_failure(None, ""), "failed");
-    }
 
     #[test]
     fn update_download_file_extracts_plain_filename() {
