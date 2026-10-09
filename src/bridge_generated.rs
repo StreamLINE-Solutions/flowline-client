@@ -216,6 +216,24 @@ fn wire_session_start_with_displays_impl(
         },
     )
 }
+fn wire_session_get_cursor_shape_impl(
+    port_: MessagePort,
+    session_id: impl Wire2Api<uuid::Uuid> + UnwindSafe,
+    id: impl Wire2Api<String> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap::<_, _, _, Option<CursorShape>>(
+        WrapInfo {
+            debug_name: "session_get_cursor_shape",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_session_id = session_id.wire2api();
+            let api_id = id.wire2api();
+            move |task_callback| Ok(session_get_cursor_shape(api_session_id, api_id))
+        },
+    )
+}
 fn wire_session_get_remember_impl(
     port_: MessagePort,
     session_id: impl Wire2Api<uuid::Uuid> + UnwindSafe,
@@ -5218,6 +5236,25 @@ impl Wire2Api<usize> for usize {
     }
 }
 // Section: impl IntoDart
+
+impl support::IntoDart for CursorShape {
+    fn into_dart(self) -> support::DartAbi {
+        vec![
+            self.hotx.into_into_dart().into_dart(),
+            self.hoty.into_into_dart().into_dart(),
+            self.width.into_into_dart().into_dart(),
+            self.height.into_into_dart().into_dart(),
+            self.colors.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl support::IntoDartExceptPrimitive for CursorShape {}
+impl rust2dart::IntoIntoDart<CursorShape> for CursorShape {
+    fn into_into_dart(self) -> Self {
+        self
+    }
+}
 
 impl support::IntoDart for EventToUI {
     fn into_dart(self) -> support::DartAbi {

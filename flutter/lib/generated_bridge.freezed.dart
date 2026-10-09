@@ -16,13 +16,14 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$EventToUI {
-  Object get field0 => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
     required TResult Function(String field0) event,
     required TResult Function(int field0) rgba,
     required TResult Function(int field0, bool field1) texture,
-    required TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors) cursor,
+    required TResult Function(String id, int hotx, int hoty, int width,
+            int height, Uint8List colors)
+        cursor,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -30,7 +31,9 @@ mixin _$EventToUI {
     TResult? Function(String field0)? event,
     TResult? Function(int field0)? rgba,
     TResult? Function(int field0, bool field1)? texture,
-    TResult? Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+    TResult? Function(String id, int hotx, int hoty, int width, int height,
+            Uint8List colors)?
+        cursor,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -38,7 +41,9 @@ mixin _$EventToUI {
     TResult Function(String field0)? event,
     TResult Function(int field0)? rgba,
     TResult Function(int field0, bool field1)? texture,
-    TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+    TResult Function(String id, int hotx, int hoty, int width, int height,
+            Uint8List colors)?
+        cursor,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -84,6 +89,9 @@ class _$EventToUICopyWithImpl<$Res, $Val extends EventToUI>
   final $Val _value;
   // ignore: unused_field
   final $Res Function($Val) _then;
+
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
 }
 
 /// @nodoc
@@ -103,6 +111,8 @@ class __$$EventToUI_EventImplCopyWithImpl<$Res>
       _$EventToUI_EventImpl _value, $Res Function(_$EventToUI_EventImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -141,7 +151,9 @@ class _$EventToUI_EventImpl implements EventToUI_Event {
   @override
   int get hashCode => Object.hash(runtimeType, field0);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$EventToUI_EventImplCopyWith<_$EventToUI_EventImpl> get copyWith =>
@@ -154,7 +166,9 @@ class _$EventToUI_EventImpl implements EventToUI_Event {
     required TResult Function(String field0) event,
     required TResult Function(int field0) rgba,
     required TResult Function(int field0, bool field1) texture,
-    required TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors) cursor,
+    required TResult Function(String id, int hotx, int hoty, int width,
+            int height, Uint8List colors)
+        cursor,
   }) {
     return event(field0);
   }
@@ -165,7 +179,9 @@ class _$EventToUI_EventImpl implements EventToUI_Event {
     TResult? Function(String field0)? event,
     TResult? Function(int field0)? rgba,
     TResult? Function(int field0, bool field1)? texture,
-    TResult? Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+    TResult? Function(String id, int hotx, int hoty, int width, int height,
+            Uint8List colors)?
+        cursor,
   }) {
     return event?.call(field0);
   }
@@ -176,7 +192,9 @@ class _$EventToUI_EventImpl implements EventToUI_Event {
     TResult Function(String field0)? event,
     TResult Function(int field0)? rgba,
     TResult Function(int field0, bool field1)? texture,
-    TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+    TResult Function(String id, int hotx, int hoty, int width, int height,
+            Uint8List colors)?
+        cursor,
     required TResult orElse(),
   }) {
     if (event != null) {
@@ -226,9 +244,11 @@ class _$EventToUI_EventImpl implements EventToUI_Event {
 abstract class EventToUI_Event implements EventToUI {
   const factory EventToUI_Event(final String field0) = _$EventToUI_EventImpl;
 
-  @override
   String get field0;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$EventToUI_EventImplCopyWith<_$EventToUI_EventImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -250,6 +270,8 @@ class __$$EventToUI_RgbaImplCopyWithImpl<$Res>
       _$EventToUI_RgbaImpl _value, $Res Function(_$EventToUI_RgbaImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -288,7 +310,9 @@ class _$EventToUI_RgbaImpl implements EventToUI_Rgba {
   @override
   int get hashCode => Object.hash(runtimeType, field0);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$EventToUI_RgbaImplCopyWith<_$EventToUI_RgbaImpl> get copyWith =>
@@ -301,7 +325,9 @@ class _$EventToUI_RgbaImpl implements EventToUI_Rgba {
     required TResult Function(String field0) event,
     required TResult Function(int field0) rgba,
     required TResult Function(int field0, bool field1) texture,
-    required TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors) cursor,
+    required TResult Function(String id, int hotx, int hoty, int width,
+            int height, Uint8List colors)
+        cursor,
   }) {
     return rgba(field0);
   }
@@ -312,7 +338,9 @@ class _$EventToUI_RgbaImpl implements EventToUI_Rgba {
     TResult? Function(String field0)? event,
     TResult? Function(int field0)? rgba,
     TResult? Function(int field0, bool field1)? texture,
-    TResult? Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+    TResult? Function(String id, int hotx, int hoty, int width, int height,
+            Uint8List colors)?
+        cursor,
   }) {
     return rgba?.call(field0);
   }
@@ -323,7 +351,9 @@ class _$EventToUI_RgbaImpl implements EventToUI_Rgba {
     TResult Function(String field0)? event,
     TResult Function(int field0)? rgba,
     TResult Function(int field0, bool field1)? texture,
-    TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+    TResult Function(String id, int hotx, int hoty, int width, int height,
+            Uint8List colors)?
+        cursor,
     required TResult orElse(),
   }) {
     if (rgba != null) {
@@ -373,9 +403,11 @@ class _$EventToUI_RgbaImpl implements EventToUI_Rgba {
 abstract class EventToUI_Rgba implements EventToUI {
   const factory EventToUI_Rgba(final int field0) = _$EventToUI_RgbaImpl;
 
-  @override
   int get field0;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$EventToUI_RgbaImplCopyWith<_$EventToUI_RgbaImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -397,6 +429,8 @@ class __$$EventToUI_TextureImplCopyWithImpl<$Res>
       $Res Function(_$EventToUI_TextureImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -443,7 +477,9 @@ class _$EventToUI_TextureImpl implements EventToUI_Texture {
   @override
   int get hashCode => Object.hash(runtimeType, field0, field1);
 
-  @JsonKey(ignore: true)
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$EventToUI_TextureImplCopyWith<_$EventToUI_TextureImpl> get copyWith =>
@@ -456,7 +492,9 @@ class _$EventToUI_TextureImpl implements EventToUI_Texture {
     required TResult Function(String field0) event,
     required TResult Function(int field0) rgba,
     required TResult Function(int field0, bool field1) texture,
-    required TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors) cursor,
+    required TResult Function(String id, int hotx, int hoty, int width,
+            int height, Uint8List colors)
+        cursor,
   }) {
     return texture(field0, field1);
   }
@@ -467,7 +505,9 @@ class _$EventToUI_TextureImpl implements EventToUI_Texture {
     TResult? Function(String field0)? event,
     TResult? Function(int field0)? rgba,
     TResult? Function(int field0, bool field1)? texture,
-    TResult? Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+    TResult? Function(String id, int hotx, int hoty, int width, int height,
+            Uint8List colors)?
+        cursor,
   }) {
     return texture?.call(field0, field1);
   }
@@ -478,7 +518,9 @@ class _$EventToUI_TextureImpl implements EventToUI_Texture {
     TResult Function(String field0)? event,
     TResult Function(int field0)? rgba,
     TResult Function(int field0, bool field1)? texture,
-    TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+    TResult Function(String id, int hotx, int hoty, int width, int height,
+            Uint8List colors)?
+        cursor,
     required TResult orElse(),
   }) {
     if (texture != null) {
@@ -529,10 +571,12 @@ abstract class EventToUI_Texture implements EventToUI {
   const factory EventToUI_Texture(final int field0, final bool field1) =
       _$EventToUI_TextureImpl;
 
-  @override
   int get field0;
   bool get field1;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$EventToUI_TextureImplCopyWith<_$EventToUI_TextureImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
@@ -544,12 +588,7 @@ abstract class _$$EventToUI_CursorImplCopyWith<$Res> {
       __$$EventToUI_CursorImplCopyWithImpl<$Res>;
   @useResult
   $Res call(
-      {String id,
-      int hotx,
-      int hoty,
-      int width,
-      int height,
-      Uint8List colors});
+      {String id, int hotx, int hoty, int width, int height, Uint8List colors});
 }
 
 /// @nodoc
@@ -560,6 +599,8 @@ class __$$EventToUI_CursorImplCopyWithImpl<$Res>
       $Res Function(_$EventToUI_CursorImpl) _then)
       : super(_value, _then);
 
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
   $Res call({
@@ -571,27 +612,27 @@ class __$$EventToUI_CursorImplCopyWithImpl<$Res>
     Object? colors = null,
   }) {
     return _then(_$EventToUI_CursorImpl(
-      null == id
+      id: null == id
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
-      null == hotx
+      hotx: null == hotx
           ? _value.hotx
           : hotx // ignore: cast_nullable_to_non_nullable
               as int,
-      null == hoty
+      hoty: null == hoty
           ? _value.hoty
           : hoty // ignore: cast_nullable_to_non_nullable
               as int,
-      null == width
+      width: null == width
           ? _value.width
           : width // ignore: cast_nullable_to_non_nullable
               as int,
-      null == height
+      height: null == height
           ? _value.height
           : height // ignore: cast_nullable_to_non_nullable
               as int,
-      null == colors
+      colors: null == colors
           ? _value.colors
           : colors // ignore: cast_nullable_to_non_nullable
               as Uint8List,
@@ -602,8 +643,13 @@ class __$$EventToUI_CursorImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$EventToUI_CursorImpl implements EventToUI_Cursor {
-  const _$EventToUI_CursorImpl(this.id, this.hotx, this.hoty, this.width,
-      this.height, this.colors);
+  const _$EventToUI_CursorImpl(
+      {required this.id,
+      required this.hotx,
+      required this.hoty,
+      required this.width,
+      required this.height,
+      required this.colors});
 
   @override
   final String id;
@@ -633,14 +679,16 @@ class _$EventToUI_CursorImpl implements EventToUI_Cursor {
             (identical(other.hoty, hoty) || other.hoty == hoty) &&
             (identical(other.width, width) || other.width == width) &&
             (identical(other.height, height) || other.height == height) &&
-            (identical(other.colors, colors) || other.colors == colors));
+            const DeepCollectionEquality().equals(other.colors, colors));
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, hotx, hoty, width, height, colors);
+  int get hashCode => Object.hash(runtimeType, id, hotx, hoty, width, height,
+      const DeepCollectionEquality().hash(colors));
 
-  @JsonKey(ignore: true)
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
   _$$EventToUI_CursorImplCopyWith<_$EventToUI_CursorImpl> get copyWith =>
@@ -653,7 +701,9 @@ class _$EventToUI_CursorImpl implements EventToUI_Cursor {
     required TResult Function(String field0) event,
     required TResult Function(int field0) rgba,
     required TResult Function(int field0, bool field1) texture,
-    required TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors) cursor,
+    required TResult Function(String id, int hotx, int hoty, int width,
+            int height, Uint8List colors)
+        cursor,
   }) {
     return cursor(id, hotx, hoty, width, height, colors);
   }
@@ -661,10 +711,12 @@ class _$EventToUI_CursorImpl implements EventToUI_Cursor {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String field0) event,
-    TResult? Function(int field0) rgba,
-    TResult? Function(int field0, bool field1) texture,
-    TResult? Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+    TResult? Function(String field0)? event,
+    TResult? Function(int field0)? rgba,
+    TResult? Function(int field0, bool field1)? texture,
+    TResult? Function(String id, int hotx, int hoty, int width, int height,
+            Uint8List colors)?
+        cursor,
   }) {
     return cursor?.call(id, hotx, hoty, width, height, colors);
   }
@@ -675,7 +727,9 @@ class _$EventToUI_CursorImpl implements EventToUI_Cursor {
     TResult Function(String field0)? event,
     TResult Function(int field0)? rgba,
     TResult Function(int field0, bool field1)? texture,
-    TResult Function(String id, int hotx, int hoty, int width, int height, Uint8List colors)? cursor,
+    TResult Function(String id, int hotx, int hoty, int width, int height,
+            Uint8List colors)?
+        cursor,
     required TResult orElse(),
   }) {
     if (cursor != null) {
@@ -724,22 +778,23 @@ class _$EventToUI_CursorImpl implements EventToUI_Cursor {
 
 abstract class EventToUI_Cursor implements EventToUI {
   const factory EventToUI_Cursor(
-    final String id,
-    final int hotx,
-    final int hoty,
-    final int width,
-    final int height,
-    final Uint8List colors,
-  ) = _$EventToUI_CursorImpl;
+      {required final String id,
+      required final int hotx,
+      required final int hoty,
+      required final int width,
+      required final int height,
+      required final Uint8List colors}) = _$EventToUI_CursorImpl;
 
-  @override
   String get id;
   int get hotx;
   int get hoty;
   int get width;
   int get height;
   Uint8List get colors;
-  @JsonKey(ignore: true)
+
+  /// Create a copy of EventToUI
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
   _$$EventToUI_CursorImplCopyWith<_$EventToUI_CursorImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

@@ -85,6 +85,15 @@ pub extern "C" fn wire_session_start_with_displays(
 }
 
 #[no_mangle]
+pub extern "C" fn wire_session_get_cursor_shape(
+    port_: i64,
+    session_id: *mut wire_uint_8_list,
+    id: *mut wire_uint_8_list,
+) {
+    wire_session_get_cursor_shape_impl(port_, session_id, id)
+}
+
+#[no_mangle]
 pub extern "C" fn wire_session_get_remember(port_: i64, session_id: *mut wire_uint_8_list) {
     wire_session_get_remember_impl(port_, session_id)
 }

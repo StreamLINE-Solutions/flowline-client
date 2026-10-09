@@ -152,6 +152,10 @@ void wire_session_start_with_displays(int64_t port_,
                                       struct wire_uint_8_list *id,
                                       struct wire_int_32_list *displays);
 
+void wire_session_get_cursor_shape(int64_t port_,
+                                   struct wire_uint_8_list *session_id,
+                                   struct wire_uint_8_list *id);
+
 void wire_session_get_remember(int64_t port_, struct wire_uint_8_list *session_id);
 
 void wire_session_get_toggle_option(int64_t port_,
@@ -1105,6 +1109,7 @@ static int64_t dummy_method_to_enforce_bundling(void) {
     dummy_var ^= ((int64_t) (void*) wire_session_add_sync);
     dummy_var ^= ((int64_t) (void*) wire_session_start);
     dummy_var ^= ((int64_t) (void*) wire_session_start_with_displays);
+    dummy_var ^= ((int64_t) (void*) wire_session_get_cursor_shape);
     dummy_var ^= ((int64_t) (void*) wire_session_get_remember);
     dummy_var ^= ((int64_t) (void*) wire_session_get_toggle_option);
     dummy_var ^= ((int64_t) (void*) wire_session_get_toggle_option_sync);

@@ -72,6 +72,11 @@ abstract class Rustdesk {
 
   FlutterRustBridgeTaskConstMeta get kSessionStartWithDisplaysConstMeta;
 
+  Future<CursorShape?> sessionGetCursorShape(
+      {required UuidValue sessionId, required String id, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kSessionGetCursorShapeConstMeta;
+
   Future<bool?> sessionGetRemember(
       {required UuidValue sessionId, dynamic hint});
 
@@ -1739,6 +1744,22 @@ abstract class Rustdesk {
   FlutterRustBridgeTaskConstMeta get kSessionGetCommonConstMeta;
 }
 
+class CursorShape {
+  final int hotx;
+  final int hoty;
+  final int width;
+  final int height;
+  final Uint8List colors;
+
+  const CursorShape({
+    required this.hotx,
+    required this.hoty,
+    required this.width,
+    required this.height,
+    required this.colors,
+  });
+}
+
 @freezed
 sealed class EventToUI with _$EventToUI {
   const factory EventToUI.event(
@@ -1751,14 +1772,14 @@ sealed class EventToUI with _$EventToUI {
     int field0,
     bool field1,
   ) = EventToUI_Texture;
-  const factory EventToUI.cursor(
-    String id,
-    int hotx,
-    int hoty,
-    int width,
-    int height,
-    Uint8List colors,
-  ) = EventToUI_Cursor;
+  const factory EventToUI.cursor({
+    required String id,
+    required int hotx,
+    required int hoty,
+    required int width,
+    required int height,
+    required Uint8List colors,
+  }) = EventToUI_Cursor;
 }
 
 class RustdeskImpl implements Rustdesk {
@@ -1980,6 +2001,26 @@ class RustdeskImpl implements Rustdesk {
       const FlutterRustBridgeTaskConstMeta(
         debugName: "session_start_with_displays",
         argNames: ["sessionId", "id", "displays"],
+      );
+
+  Future<CursorShape?> sessionGetCursorShape(
+      {required UuidValue sessionId, required String id, dynamic hint}) {
+    var arg0 = _platform.api2wire_Uuid(sessionId);
+    var arg1 = _platform.api2wire_String(id);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) =>
+          _platform.inner.wire_session_get_cursor_shape(port_, arg0, arg1),
+      parseSuccessData: _wire2api_opt_box_autoadd_cursor_shape,
+      constMeta: kSessionGetCursorShapeConstMeta,
+      argValues: [sessionId, id],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kSessionGetCursorShapeConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "session_get_cursor_shape",
+        argNames: ["sessionId", "id"],
       );
 
   Future<bool?> sessionGetRemember(
@@ -8073,8 +8114,25 @@ class RustdeskImpl implements Rustdesk {
     return raw as bool;
   }
 
+  CursorShape _wire2api_box_autoadd_cursor_shape(dynamic raw) {
+    return _wire2api_cursor_shape(raw);
+  }
+
   int _wire2api_box_autoadd_i32(dynamic raw) {
     return raw as int;
+  }
+
+  CursorShape _wire2api_cursor_shape(dynamic raw) {
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return CursorShape(
+      hotx: _wire2api_i32(arr[0]),
+      hoty: _wire2api_i32(arr[1]),
+      width: _wire2api_i32(arr[2]),
+      height: _wire2api_i32(arr[3]),
+      colors: _wire2api_uint_8_list(arr[4]),
+    );
   }
 
   EventToUI _wire2api_event_to_ui(dynamic raw) {
@@ -8094,12 +8152,12 @@ class RustdeskImpl implements Rustdesk {
         );
       case 3:
         return EventToUI_Cursor(
-          _wire2api_String(raw[1]),
-          _wire2api_i32(raw[2]),
-          _wire2api_i32(raw[3]),
-          _wire2api_i32(raw[4]),
-          _wire2api_i32(raw[5]),
-          _wire2api_uint_8_list(raw[6]),
+          id: _wire2api_String(raw[1]),
+          hotx: _wire2api_i32(raw[2]),
+          hoty: _wire2api_i32(raw[3]),
+          width: _wire2api_i32(raw[4]),
+          height: _wire2api_i32(raw[5]),
+          colors: _wire2api_uint_8_list(raw[6]),
         );
       default:
         throw Exception("unreachable");
@@ -8128,6 +8186,10 @@ class RustdeskImpl implements Rustdesk {
 
   bool? _wire2api_opt_box_autoadd_bool(dynamic raw) {
     return raw == null ? null : _wire2api_box_autoadd_bool(raw);
+  }
+
+  CursorShape? _wire2api_opt_box_autoadd_cursor_shape(dynamic raw) {
+    return raw == null ? null : _wire2api_box_autoadd_cursor_shape(raw);
   }
 
   int? _wire2api_opt_box_autoadd_i32(dynamic raw) {
@@ -8537,6 +8599,27 @@ class RustdeskWire implements FlutterRustBridgeWireBase {
       _wire_session_start_with_displaysPtr.asFunction<
           void Function(int, ffi.Pointer<wire_uint_8_list>,
               ffi.Pointer<wire_uint_8_list>, ffi.Pointer<wire_int_32_list>)>();
+
+  void wire_session_get_cursor_shape(
+    int port_,
+    ffi.Pointer<wire_uint_8_list> session_id,
+    ffi.Pointer<wire_uint_8_list> id,
+  ) {
+    return _wire_session_get_cursor_shape(
+      port_,
+      session_id,
+      id,
+    );
+  }
+
+  late final _wire_session_get_cursor_shapePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(ffi.Int64, ffi.Pointer<wire_uint_8_list>,
+              ffi.Pointer<wire_uint_8_list>)>>('wire_session_get_cursor_shape');
+  late final _wire_session_get_cursor_shape =
+      _wire_session_get_cursor_shapePtr.asFunction<
+          void Function(int, ffi.Pointer<wire_uint_8_list>,
+              ffi.Pointer<wire_uint_8_list>)>();
 
   void wire_session_get_remember(
     int port_,
