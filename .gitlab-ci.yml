@@ -50,6 +50,8 @@ workflow:
 
 # Graphe lisible : test (contrôles) | build (compilations, manuels) | package
 # (empaquetage, enchaîné automatiquement après son build via needs:).
+# Les jobs `build:*` portent `needs: []` : jouables dès la création de la
+# pipeline, sans dépendre du stage `test` (un audit non joué ne bloque rien).
 stages: [test, build, package]
 
 variables:
@@ -97,6 +99,8 @@ audit:
 # -----------------------------------------------------------------------------
 build:linux:
   stage: build
+  # needs: [] — indépendant du stage test (audit non joué ne bloque pas les builds).
+  needs: []
   tags: [flowline-linux]
   when: manual
   allow_failure: false
@@ -331,6 +335,8 @@ package:linux:
 # -----------------------------------------------------------------------------
 build:android:
   stage: build
+  # needs: [] — indépendant du stage test (audit non joué ne bloque pas les builds).
+  needs: []
   tags: [flowline-linux]
   when: manual
   allow_failure: false
@@ -502,6 +508,8 @@ build:android:
 # -----------------------------------------------------------------------------
 build:windows:
   stage: build
+  # needs: [] — indépendant du stage test (audit non joué ne bloque pas les builds).
+  needs: []
   tags: [flowline-windows]
   when: manual
   allow_failure: false
@@ -854,6 +862,8 @@ build:windows:
 # -----------------------------------------------------------------------------
 .build-macos:
   stage: build
+  # needs: [] — indépendant du stage test (audit non joué ne bloque pas les builds).
+  needs: []
   tags: [flowline-macos]
   when: manual
   allow_failure: false
@@ -1169,6 +1179,8 @@ build:macos:aarch64:
 # -----------------------------------------------------------------------------
 build:ios:
   stage: build
+  # needs: [] — indépendant du stage test (audit non joué ne bloque pas les builds).
+  needs: []
   tags: [flowline-macos]
   when: manual
   allow_failure: false
