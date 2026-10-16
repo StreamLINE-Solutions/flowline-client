@@ -48,7 +48,8 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_PIPELINE_SOURCE == "api"
 
-stages: [build]
+# Linux : build (compilation + .deb) puis package (AppImages, enchaîné via needs).
+stages: [build, package]
 
 variables:
   FLUTTER_VERSION: "3.24.5"
@@ -89,6 +90,9 @@ audit:
 
 # -----------------------------------------------------------------------------
 # Linux x64 (remplace flowline-linux.yml)
+# Découpé en 2 jobs (lisibilité du log + artefacts granulaires) :
+#   build:linux   — compilation + .deb (technicien + support)
+#   package:linux — AppImages (needs: build:linux → enchaîné automatiquement)
 # -----------------------------------------------------------------------------
 build:linux:
   stage: build
@@ -104,11 +108,19 @@ build:linux:
     FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
   script:
     - |
+      # Helpers : sections repliables dans le log GitLab (mécanisme natif, le
+      # même que les sections « Getting source » du runner).
+      # Usage : section_start <nom> "Titre" [true|false] ; section_end <nom>
+      section_start() {
+        local name="$1" title="$2" collapsed="${3:-true}"
+        echo -e "section_start:$(date +%s):${name}[collapsed=${collapsed}]\r\e[0K\e[36;1m${title}\e[0m"
+      }
+      section_end() { echo -e "section_end:$(date +%s):${1}\r\e[0K"; }
+    - |
+      section_start creds "Git credentials (deps git privées)"
       # checkout : géré par le runner (submodules récursifs via
       # GIT_SUBMODULE_STRATEGY=recursive côté runner ; le PAT GitHub
       # FLOWLINE_GH_TOKEN sera remplacé par GitLab en phase 2).
-      #
-      # Configure git credentials (deps git privées, pubspec rustdesk-org/*)
       # GIT_CONFIG_GLOBAL = config job-only (ne touche pas au ~/.gitconfig).
       # Audit 25/09 (0065) : PAT limité à ce scope (plus d'env workflow-level).
       CI_TMP="$CI_PROJECT_DIR/.ci-tmp"
@@ -117,12 +129,12 @@ build:linux:
       export GITHUB_TOKEN="$FLOWLINE_GH_TOKEN"
       git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
       export GIT_CONFIG_GLOBAL="$GITCFG"
+      section_end creds
     - |
-      # Install libunwind-dev first — résout un conflit apt connu : installé en
+      section_start apt "Dépendances (apt)"
+      # libunwind-dev d'abord — résout un conflit apt connu : installé en
       # premier, libunwind-dev passe (sinon « held broken packages » avec gstreamer).
       sudo apt-get install -y --no-install-recommends libunwind-dev
-    - |
-      # Install apt dependencies
       # NOTE: pas de libappindicator3-dev — il conflictue avec
       # libayatana-appindicator3-1 (embarqué dans le desktop Pop!_OS 24.04) ;
       # libappindicator-sys charge la lib à runtime (libloading), pas au link.
@@ -156,12 +168,13 @@ build:linux:
         pkg-config \
         wget \
         yasm
+      section_end apt
     - |
-      # Install flutter : SDK 3.24.5 persistant sur le runner (l'action
-      # subosito/flutter-action est supprimée — toolchain déjà installée).
-      #
-      # Patch flutter (idempotent : le SDK persiste entre les runs → le patch
-      # peut déjà être appliqué).
+      section_start flutter "Patch Flutter (3.24.5)"
+      # SDK 3.24.5 persistant sur le runner (l'action subosito/flutter-action
+      # est supprimée — toolchain déjà installée).
+      # Patch idempotent : le SDK persiste entre les runs → le patch peut déjà
+      # être appliqué.
       FLUTTER_SDK_DIR="$(dirname "$(dirname "$(which flutter)")")"
       cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff "$FLUTTER_SDK_DIR"
       cd "$FLUTTER_SDK_DIR"
@@ -174,12 +187,13 @@ build:linux:
       fi
       # Retour au workspace (GitLab : un seul shell pour tout le job).
       cd "$CI_PROJECT_DIR"
+      section_end flutter
     - |
-      # Install Rust toolchain : rustup 1.88 persistant sur le runner (action supprimée).
-      # Swatinem/rust-cache supprimé : cache cargo local persistant (cache-bin: false
-      # n'a plus d'objet). lukka/run-vcpkg supprimé : VCPKG_ROOT persistant côté runner.
-      #
-      # Install vcpkg dependencies (cache binaire → $VCPKG_BINARY_SOURCES global)
+      section_start vcpkg "vcpkg install (cache binaire local)"
+      # rustup 1.88 persistant sur le runner (action dtolnay supprimée).
+      # Swatinem/rust-cache supprimé : cache cargo local persistant (cache-bin:
+      # false n'a plus d'objet). lukka/run-vcpkg supprimé : VCPKG_ROOT
+      # persistant côté runner.
       if ! "$VCPKG_ROOT/vcpkg" \
         install \
         --x-install-root="$VCPKG_ROOT/installed"; then
@@ -191,8 +205,57 @@ build:linux:
         done
         exit 1
       fi
+      section_end vcpkg
     - |
-      # Install appimage-builder
+      section_start build-technicien "Build technicien (.deb)" false
+      # (env step GitHub → exports ; RUSTDESK_* / FLOWLINE_API_SERVER sont des
+      # variables de job, héritées par build.py.)
+      export FLOWLINE_QUICK_SUPPORT="0"
+      ./build.py --flutter --hwcodec --unix-file-copy-paste
+      test -f "flowline-$VERSION.deb"
+      # Renommé tout de suite : le build support réécrit flowline-<version>.deb.
+      mv "flowline-$VERSION.deb" flowline-technicien.deb
+      section_end build-technicien
+    - |
+      section_start build-support "Build support (.deb)" false
+      # Même cache cargo que le build technicien → 2e build incrémental.
+      export FLOWLINE_QUICK_SUPPORT="1"
+      ./build.py --flutter --hwcodec --unix-file-copy-paste
+      # build.py produit flowline-<version>.deb → renommé pour distinguer l'artifact.
+      mv "flowline-$VERSION.deb" flowline-support.deb
+      section_end build-support
+  artifacts:
+    # Artefacts granulaires : les .deb ici, les AppImages dans package:linux.
+    name: flowline-linux-x64-$VERSION-deb
+    paths:
+      - flowline-technicien.deb
+      - flowline-support.deb
+    expire_in: 30 days
+  after_script:
+    # Équiv. du step « Cleanup git credentials » (if: always()) : ne pas laisser
+    # le fichier de credentials sur le runner persistant.
+    - rm -rf "$CI_PROJECT_DIR/.ci-tmp"
+
+# AppImages Linux : job séparé (lisibilité, artefacts granulaires, relance
+# possible sans recompiler). Enchaîné automatiquement après build:linux.
+package:linux:
+  stage: package
+  tags: [flowline-linux]
+  needs: [build:linux]
+  allow_failure: false
+  timeout: 45 minutes  # ajustable
+  variables:
+    VERSION: "1.4.24"
+  script:
+    - |
+      # Helpers sections (voir build:linux).
+      section_start() {
+        local name="$1" title="$2" collapsed="${3:-true}"
+        echo -e "section_start:$(date +%s):${name}[collapsed=${collapsed}]\r\e[0K\e[36;1m${title}\e[0m"
+      }
+      section_end() { echo -e "section_end:$(date +%s):${1}\r\e[0K"; }
+    - |
+      section_start appimage-tools "Outils AppImage (venv + patch appimage-builder)"
       # Venv temporaire (PEP 668 : pip système bloqué). appimage-builder
       # construit l'AppImage depuis le .deb via la recette appimage/.
       # Patch package.py : les versions Debian/Ubuntu non-PEP440 (ex
@@ -225,56 +288,39 @@ build:linux:
       target.write_text(src.replace(m.group(0), replacement))
       print("appimage-builder patched (versions non-PEP440)")
       PY
+      section_end appimage-tools
     - |
-      # Build FlowLINE (technicien)
-      # (env step GitHub → exports ; RUSTDESK_* / FLOWLINE_API_SERVER sont des
-      # variables de job, héritées par build.py.)
-      export FLOWLINE_QUICK_SUPPORT="0"
-      ./build.py --flutter --hwcodec --unix-file-copy-paste
-      test -f "flowline-$VERSION.deb"
-      # Renommé tout de suite : le build support réécrit flowline-<version>.deb.
-      mv "flowline-$VERSION.deb" flowline-technicien.deb
-    - |
-      # Build patched AppRun (#16330)
+      section_start apprun "Build AppRun patché (#16330)"
       # L'AppRun v2.0.0 téléchargé par appimage-builder copie chaque argument
       # dans un buffer de pile de 1 Kio → tout argument >= 1024 octets abortait
       # l'AppImage (« buffer overflow detected ») avant même le démarrage.
-      # build-apprun.sh compile l'AppRun patché dans appimage/appimage-build/,
-      # le cache que lit --build-dir (voir étapes AppImage ci-dessous).
+      # build-apprun.sh compile l'AppRun patché dans appimage/appimage-build/
+      # (docker ubuntu:16.04), le cache que lit --build-dir.
       appimage/build-apprun.sh x86_64
+      section_end apprun
     - |
-      # Build AppImage (technicien)
+      section_start appimage-technicien "AppImage technicien" false
+      # Les .deb arrivent via needs: [build:linux] (artefacts téléchargés).
       cp flowline-technicien.deb flowline.deb
       /tmp/appimage-venv/bin/appimage-builder --recipe appimage/AppImageBuilder-x86_64.yml --build-dir appimage/appimage-build --skip-tests
       # Vérifie que l'AppRun embarqué est bien celui compilé ici (#16330).
       cmp AppDir/AppRun appimage/appimage-build/AppRun/v2.0.0/AppRun-Release-x86_64
       mv "FlowLINE-$VERSION-x86_64.AppImage" flowline-technicien.AppImage
+      section_end appimage-technicien
     - |
-      # Build FlowLINE Support (QuickSupport)
-      export FLOWLINE_QUICK_SUPPORT="1"
-      ./build.py --flutter --hwcodec --unix-file-copy-paste
-      # build.py produit flowline-<version>.deb → renommé pour distinguer l'artifact.
-      mv "flowline-$VERSION.deb" flowline-support.deb
-    - |
-      # Build AppImage (Support)
+      section_start appimage-support "AppImage support" false
       cp flowline-support.deb flowline.deb
       /tmp/appimage-venv/bin/appimage-builder --recipe appimage/AppImageBuilder-x86_64.yml --build-dir appimage/appimage-build --skip-tests
       cmp AppDir/AppRun appimage/appimage-build/AppRun/v2.0.0/AppRun-Release-x86_64
       mv "FlowLINE-$VERSION-x86_64.AppImage" flowline-support.AppImage
+      section_end appimage-support
   artifacts:
-    # GitLab ne supporte qu'un seul artefact nommé par job (contrairement à
-    # actions/upload-artifact) : les 2 artefacts GitHub (technicien + support)
-    # sont fusionnés ici. Voir notes.md.
-    name: flowline-linux-x64-$VERSION
+    name: flowline-linux-x64-$VERSION-appimage
     paths:
-      - flowline-technicien.deb
       - flowline-technicien.AppImage
-      - flowline-support.deb
       - flowline-support.AppImage
     expire_in: 30 days
   after_script:
-    # Équiv. du step « Cleanup git credentials » (if: always()) : ne pas laisser
-    # le fichier de credentials sur le runner persistant.
     - rm -rf "$CI_PROJECT_DIR/.ci-tmp"
 
 # -----------------------------------------------------------------------------
