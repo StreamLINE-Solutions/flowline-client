@@ -1,0 +1,1174 @@
+# =============================================================================
+# FlowLINE Client — pipeline GitLab CI (brouillon à relire)
+#
+# Objet : builds de release MANUELS uniquement (aucun build sur push / miroir).
+# Remplace les 6 workflows GitHub Actions (ticket 0042 — phase 3) :
+#   .github/workflows/flowline-linux.yml
+#   .github/workflows/flowline-windows.yml
+#   .github/workflows/flowline-macos.yml
+#   .github/workflows/flowline-android-support.yml
+#   .github/workflows/flowline-ios-support.yml
+#   .github/workflows/flowline-audit.yml
+#
+# Runners self-hosted (mêmes machines que les runners GitHub actuels) :
+#   - tag flowline-linux   : laptop Linux x64 (Pop!_OS 24.04) — Rust 1.88,
+#     Flutter 3.24.5 (SDK persisté + patch), vcpkg (VCPKG_ROOT), docker, sudo apt,
+#     Android SDK + NDK r25c+ + cargo-ndk (ANDROID_HOME / ANDROID_NDK_HOME).
+#   - tag flowline-windows : VM Windows 11 x64 — VS Build Tools (VCTools +
+#     Windows SDK, env MSVC), Rust 1.88, Flutter 3.24.5, LLVM 15, vcpkg (tool
+#     cache), NuGet + msbuild, PowerShell 5.1 (le runner passe -ExecutionPolicy
+#     Bypass ; shell PowerShell à configurer côté runner).
+#   - tag flowline-macos   : Mac mini ARM64 — Xcode (+ notarytool/stapler),
+#     Rust 1.88, Flutter 3.24.5, vcpkg, create-dmg, nasm 2.16.03.
+#
+# Variables CI/CD à créer dans Settings > CI/CD > Variables (noms uniquement) :
+#   obligatoires : FLOWLINE_GH_TOKEN, ESIGNER_USERNAME, ESIGNER_PASSWORD,
+#     ESIGNER_TOTP_SECRET, BUILD_CERTIFICATE_BASE64, P12_PASSWORD,
+#     KEYCHAIN_PASSWORD, ASC_KEY_ID, ASC_ISSUER_ID, ASC_API_KEY_P8
+#   optionnelles (surcharge des défauts du fichier) : FLOWLINE_API_SERVER,
+#     RUSTDESK_RENDEZVOUS_SERVERS, SIGNED
+#   côté runner (env machine, pas dans GitLab) : VCPKG_ROOT, RUNNER_TOOL_CACHE,
+#     ANDROID_HOME, ANDROID_NDK_HOME
+#
+# Déclenchement : pipelines « web » uniquement (voir workflow: rules ci-dessous).
+#   1. CI/CD > Pipelines > Run pipeline (branche main) — y définir au besoin
+#      FLOWLINE_API_SERVER / RUSTDESK_RENDEZVOUS_SERVERS / SIGNED ;
+#   2. lancer (play) manuellement chaque job de build voulu.
+#
+# Phase 2 (à venir) : les URLs des submodules + le token basculeront de GitHub
+#   vers GitLab. D'ici là les submodules récursifs sont activés dans ce fichier
+#   (GIT_SUBMODULE_STRATEGY) et l'auth des deps git privées (pubspec) est faite
+#   dans chaque job (credential helper + PAT). Points « à confirmer » : voir notes.md.
+# =============================================================================
+
+# Aucun pipeline sur push / synchronisation du miroir : uniquement « Run pipeline »
+# (web) ou déclenchement API (outillage/scripts — ex. tests automatisés).
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "api"
+
+stages: [build]
+
+variables:
+  FLUTTER_VERSION: "3.24.5"
+  RUST_VERSION: "1.88"
+  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+  # Cache binaire vcpkg : backend fichier local (remplace x-gha, le backend du
+  # cache GitHub Actions). Le dossier est créé par vcpkg si absent.
+  VCPKG_BINARY_SOURCES: "clear;files,$CI_PROJECT_DIR/.vcpkg-bincache,readwrite"
+  # Submodules récursifs au checkout (libs/hbb_common — public aujourd'hui ; URL
+  # basculée sur GitLab en phase 2). Le job audit le surcharge à « none ».
+  GIT_SUBMODULE_STRATEGY: recursive
+
+# -----------------------------------------------------------------------------
+# Audit dépendances (remplace flowline-audit.yml)
+# -----------------------------------------------------------------------------
+audit:
+  stage: build
+  tags: [flowline-linux]
+  when: manual
+  allow_failure: false
+  timeout: 15 minutes  # ajustable
+  variables:
+    # Audit 25/09 (0066) : épinglé par digest (index multi-arch) — le tag v2 est mutable.
+    OSV_SCANNER_IMAGE: "ghcr.io/google/osv-scanner:v2@sha256:afd838850ac1a0fcc15ff4a041dc9ba11123c3f0d2666217a5f0fcf9222b55fa"
+    # Le source faisait submodules: false — inutile ici (Cargo.lock + pubspec.lock suffisent).
+    GIT_SUBMODULE_STRATEGY: none
+  script:
+    - |
+      # checkout : géré par le runner (stratégie submodules configurée côté runner).
+      # Scan Cargo.lock — report-only : liste les vulns restantes (dont celles sans
+      # fix compatible MSRV 1.88) sans faire échouer le job (continue-on-error → || true).
+      docker run --rm -v "$PWD:/src" -w /src "$OSV_SCANNER_IMAGE" \
+        scan source --lockfile Cargo.lock --format table || true
+    - |
+      # Gate actif : le lock Dart est propre (0 vuln au 2026-09-17).
+      docker run --rm -v "$PWD:/src" -w /src "$OSV_SCANNER_IMAGE" \
+        scan source --lockfile flutter/pubspec.lock --format table
+
+# -----------------------------------------------------------------------------
+# Linux x64 (remplace flowline-linux.yml)
+# -----------------------------------------------------------------------------
+build:linux:
+  stage: build
+  tags: [flowline-linux]
+  when: manual
+  allow_failure: false
+  timeout: 120 minutes  # ajustable
+  variables:
+    VERSION: "1.4.24"
+    # White-label : surcharger au Run pipeline pour une autre infra.
+    RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
+    RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
+    FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
+  script:
+    - |
+      # checkout : géré par le runner (submodules récursifs via
+      # GIT_SUBMODULE_STRATEGY=recursive côté runner ; le PAT GitHub
+      # FLOWLINE_GH_TOKEN sera remplacé par GitLab en phase 2).
+      #
+      # Configure git credentials (deps git privées, pubspec rustdesk-org/*)
+      # GIT_CONFIG_GLOBAL = config job-only (ne touche pas au ~/.gitconfig).
+      # Audit 25/09 (0065) : PAT limité à ce scope (plus d'env workflow-level).
+      CI_TMP="$CI_PROJECT_DIR/.ci-tmp"
+      mkdir -p "$CI_TMP"
+      GITCFG="$CI_TMP/git-global.conf"
+      export GITHUB_TOKEN="$FLOWLINE_GH_TOKEN"
+      git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+      export GIT_CONFIG_GLOBAL="$GITCFG"
+    - |
+      # Install libunwind-dev first — résout un conflit apt connu : installé en
+      # premier, libunwind-dev passe (sinon « held broken packages » avec gstreamer).
+      sudo apt-get install -y --no-install-recommends libunwind-dev
+    - |
+      # Install apt dependencies
+      # NOTE: pas de libappindicator3-dev — il conflictue avec
+      # libayatana-appindicator3-1 (embarqué dans le desktop Pop!_OS 24.04) ;
+      # libappindicator-sys charge la lib à runtime (libloading), pas au link.
+      sudo apt-get update -y
+      sudo apt-get install -y \
+        clang \
+        cmake \
+        curl \
+        gcc \
+        git \
+        g++ \
+        libasound2-dev \
+        libclang-dev \
+        libgstreamer1.0-dev \
+        libgstreamer-plugins-base1.0-dev \
+        libgtk-3-dev \
+        libpam0g-dev \
+        libpulse-dev \
+        libssl-dev \
+        libstdc++-14-dev \
+        libva-dev \
+        libvdpau-dev \
+        libxcb-randr0-dev \
+        libxcb-shape0-dev \
+        libxcb-xfixes0-dev \
+        libxdo-dev \
+        libxfixes-dev \
+        llvm-dev \
+        nasm \
+        ninja-build \
+        pkg-config \
+        wget \
+        yasm
+    - |
+      # Install flutter : SDK 3.24.5 persistant sur le runner (l'action
+      # subosito/flutter-action est supprimée — toolchain déjà installée).
+      #
+      # Patch flutter (idempotent : le SDK persiste entre les runs → le patch
+      # peut déjà être appliqué).
+      FLUTTER_SDK_DIR="$(dirname "$(dirname "$(which flutter)")")"
+      cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff "$FLUTTER_SDK_DIR"
+      cd "$FLUTTER_SDK_DIR"
+      if [[ "3.24.5" == "$FLUTTER_VERSION" ]]; then
+        if git apply --reverse --check flutter_3.24.4_dropdown_menu_enableFilter.diff 2>/dev/null; then
+          echo "Patch déjà appliqué — skip"
+        else
+          git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+        fi
+      fi
+      # Retour au workspace (GitLab : un seul shell pour tout le job).
+      cd "$CI_PROJECT_DIR"
+    - |
+      # Install Rust toolchain : rustup 1.88 persistant sur le runner (action supprimée).
+      # Swatinem/rust-cache supprimé : cache cargo local persistant (cache-bin: false
+      # n'a plus d'objet). lukka/run-vcpkg supprimé : VCPKG_ROOT persistant côté runner.
+      #
+      # Install vcpkg dependencies (cache binaire → $VCPKG_BINARY_SOURCES global)
+      if ! "$VCPKG_ROOT/vcpkg" \
+        install \
+        --x-install-root="$VCPKG_ROOT/installed"; then
+        find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+          echo "$_1:"
+          echo "======"
+          cat "$_1"
+          echo "======"
+        done
+        exit 1
+      fi
+    - |
+      # Install appimage-builder
+      # Venv temporaire (PEP 668 : pip système bloqué). appimage-builder
+      # construit l'AppImage depuis le .deb via la recette appimage/.
+      # Patch package.py : les versions Debian/Ubuntu non-PEP440 (ex
+      # 1.19.7ubuntu3) font planter packaging.Version dans
+      # _remove_old_packages() pendant la préparation du apt venv →
+      # fallback sur comparaison de chaînes. Regex robuste (indentation
+      # réelle détectée, aucun espace en dur).
+      sudo apt-get install -y --no-install-recommends libarchive-tools squashfs-tools zsync patch >/dev/null
+      rm -rf /tmp/appimage-venv
+      python3 -m venv /tmp/appimage-venv
+      /tmp/appimage-venv/bin/pip install --quiet appimage-builder
+      /tmp/appimage-venv/bin/python - <<'PY'
+      import re
+      from pathlib import Path
+      import appimagebuilder
+      target = Path(appimagebuilder.__file__).parent / "modules" / "deploy" / "apt" / "package.py"
+      src = target.read_text()
+      pattern = r"def __gt__\(self, other\):\n(\s+)if isinstance\(other, Package\):\n\s+return version\.parse\(self\.version\) > version\.parse\(other\.version\)"
+      m = re.search(pattern, src)
+      assert m, "appimage-builder patch: pattern introuvable"
+      ind = m.group(1)
+      replacement = (
+          "def __gt__(self, other):\n"
+          + ind + "if isinstance(other, Package):\n"
+          + ind + "    try:\n"
+          + ind + "        return version.parse(self.version) > version.parse(other.version)\n"
+          + ind + "    except Exception:\n"
+          + ind + "        return self.version > other.version"
+      )
+      target.write_text(src.replace(m.group(0), replacement))
+      print("appimage-builder patched (versions non-PEP440)")
+      PY
+    - |
+      # Build FlowLINE (technicien)
+      # (env step GitHub → exports ; RUSTDESK_* / FLOWLINE_API_SERVER sont des
+      # variables de job, héritées par build.py.)
+      export FLOWLINE_QUICK_SUPPORT="0"
+      ./build.py --flutter --hwcodec --unix-file-copy-paste
+      test -f "flowline-$VERSION.deb"
+      # Renommé tout de suite : le build support réécrit flowline-<version>.deb.
+      mv "flowline-$VERSION.deb" flowline-technicien.deb
+    - |
+      # Build patched AppRun (#16330)
+      # L'AppRun v2.0.0 téléchargé par appimage-builder copie chaque argument
+      # dans un buffer de pile de 1 Kio → tout argument >= 1024 octets abortait
+      # l'AppImage (« buffer overflow detected ») avant même le démarrage.
+      # build-apprun.sh compile l'AppRun patché dans appimage/appimage-build/,
+      # le cache que lit --build-dir (voir étapes AppImage ci-dessous).
+      appimage/build-apprun.sh x86_64
+    - |
+      # Build AppImage (technicien)
+      cp flowline-technicien.deb flowline.deb
+      /tmp/appimage-venv/bin/appimage-builder --recipe appimage/AppImageBuilder-x86_64.yml --build-dir appimage/appimage-build --skip-tests
+      # Vérifie que l'AppRun embarqué est bien celui compilé ici (#16330).
+      cmp AppDir/AppRun appimage/appimage-build/AppRun/v2.0.0/AppRun-Release-x86_64
+      mv "FlowLINE-$VERSION-x86_64.AppImage" flowline-technicien.AppImage
+    - |
+      # Build FlowLINE Support (QuickSupport)
+      export FLOWLINE_QUICK_SUPPORT="1"
+      ./build.py --flutter --hwcodec --unix-file-copy-paste
+      # build.py produit flowline-<version>.deb → renommé pour distinguer l'artifact.
+      mv "flowline-$VERSION.deb" flowline-support.deb
+    - |
+      # Build AppImage (Support)
+      cp flowline-support.deb flowline.deb
+      /tmp/appimage-venv/bin/appimage-builder --recipe appimage/AppImageBuilder-x86_64.yml --build-dir appimage/appimage-build --skip-tests
+      cmp AppDir/AppRun appimage/appimage-build/AppRun/v2.0.0/AppRun-Release-x86_64
+      mv "FlowLINE-$VERSION-x86_64.AppImage" flowline-support.AppImage
+  artifacts:
+    # GitLab ne supporte qu'un seul artefact nommé par job (contrairement à
+    # actions/upload-artifact) : les 2 artefacts GitHub (technicien + support)
+    # sont fusionnés ici. Voir notes.md.
+    name: flowline-linux-x64-$VERSION
+    paths:
+      - flowline-technicien.deb
+      - flowline-technicien.AppImage
+      - flowline-support.deb
+      - flowline-support.AppImage
+    expire_in: 30 days
+  after_script:
+    # Équiv. du step « Cleanup git credentials » (if: always()) : ne pas laisser
+    # le fichier de credentials sur le runner persistant.
+    - rm -rf "$CI_PROJECT_DIR/.ci-tmp"
+
+# -----------------------------------------------------------------------------
+# Android Support (remplace flowline-android-support.yml)
+# -----------------------------------------------------------------------------
+build:android:
+  stage: build
+  tags: [flowline-linux]
+  when: manual
+  allow_failure: false
+  timeout: 120 minutes  # ajustable
+  variables:
+    VERSION: "1.4.24"
+    # versionCode Android (Play + Zapstore exigent un code strictement croissant) :
+    # numéro de pipeline GitLab, monotone et jamais réutilisé (ex-github.run_number).
+    BUILD_NUMBER: $CI_PIPELINE_IID
+    RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
+    RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
+    FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
+  script:
+    - |
+      # checkout : géré par le runner (submodules récursifs côté runner).
+      #
+      # Configure git credentials (deps git privées, pubspec rustdesk-org/*)
+      # flutter pub get clone les deps git privées dans ~/.pub-cache → helper global.
+      CI_TMP="$CI_PROJECT_DIR/.ci-tmp"
+      mkdir -p "$CI_TMP"
+      GITCFG="$CI_TMP/git-global.conf"
+      export GITHUB_TOKEN="$FLOWLINE_GH_TOKEN"
+      git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+      export GIT_CONFIG_GLOBAL="$GITCFG"
+    - |
+      # Install flutter : SDK 3.24.5 persistant sur le runner (action supprimée).
+      #
+      # Patch flutter (idempotent : le SDK persiste entre les runs).
+      FLUTTER_SDK_DIR="$(dirname "$(dirname "$(which flutter)")")"
+      cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff "$FLUTTER_SDK_DIR"
+      cd "$FLUTTER_SDK_DIR"
+      if [[ "3.24.5" == "$FLUTTER_VERSION" ]]; then
+        if git apply --reverse --check flutter_3.24.4_dropdown_menu_enableFilter.diff 2>/dev/null; then
+          echo "Patch déjà appliqué — skip"
+        else
+          git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+        fi
+      fi
+      cd "$CI_PROJECT_DIR"
+    - |
+      # Guard - Android SDK/NDK + cargo-ndk (installation auto si absent)
+      # (placé après l'install du toolchain Rust dans le source ; rustup/cargo
+      # persistants ici → guard idempotent, répare cargo-ndk si manquant.)
+      : "${ANDROID_HOME:?ANDROID_HOME absent — vérifier le .env du runner (playbook flowline-runner-android-setup.yml)}"
+      : "${ANDROID_NDK_HOME:?ANDROID_NDK_HOME absent — vérifier le .env du runner (playbook flowline-runner-android-setup.yml)}"
+      # rust-cache (cache-bin: false) ne supprime plus les binaires installés
+      # pendant le run ; ce guard reste idempotent (cache froid, nettoyage manuel).
+      if ! command -v cargo-ndk >/dev/null; then
+        echo "cargo-ndk absent — installation (cargo install cargo-ndk 3.5.4)"
+        cargo install cargo-ndk --locked --version 3.5.4
+      fi
+      echo "SDK: $ANDROID_HOME"
+      echo "NDK: $ANDROID_NDK_HOME"
+      cargo ndk --version
+      # NDK r25+ : pas de binaire ndk-version (source.properties à la place).
+      grep 'Pkg.ReleaseName' "$ANDROID_NDK_HOME/source.properties"
+    - |
+      # Setup vcpkg supprimé (lukka/run-vcpkg) : VCPKG_ROOT persistant côté runner.
+      #
+      # Install vcpkg android dependencies
+      ./flutter/build_android_deps.sh arm64-v8a
+      ./flutter/build_android_deps.sh armeabi-v7a
+    - |
+      # Build rust .so (Support: feature quick-support)
+      # La variante Support force l'UI réduite incoming-only (feature cargo
+      # `quick-support`, cross-platform). Les .so sont copiés dans jniLibs.
+      # Symboles natifs conservés dans les .so : AGP les extrait vers
+      # BUNDLE-METADATA de l'AAB (debugSymbolLevel=SYMBOL_TABLE, exigé par Play)
+      # puis strippe les .so packagés.
+      export CARGO_PROFILE_RELEASE_STRIP="false"
+      # bindgen (magnum-opus, scrap, kcp-sys…) : sans target versionné + sysroot NDK,
+      # il parse avec le clang hôte → stdint.h hôte incompatible (bits/libc-header-start).
+      SYS="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
+      export BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--target=aarch64-linux-android24 --sysroot=$SYS -I$SYS/usr/include/aarch64-linux-android"
+      export BINDGEN_EXTRA_CLANG_ARGS_armv7_linux_androideabi="--target=armv7a-linux-androideabi24 --sysroot=$SYS -I$SYS/usr/include/arm-linux-androideabi"
+      # --no-strip : cargo-ndk strippe les .so par défaut (llvm-strip) — le
+      # désactiver, sinon plus aucun symbole natif dans le bundle.
+      # minSdk 24 (Play « protection automatique » exige >= 24 depuis le 01.10).
+      cargo ndk --no-strip --platform 24 -t arm64-v8a -t armeabi-v7a \
+        -o flutter/android/app/src/main/jniLibs \
+        build --locked --release --features flutter,hwcodec,quick-support
+      # Le [lib] produit liblibrustdesk.so ; System.loadLibrary("rustdesk") attend librustdesk.so.
+      mv flutter/android/app/src/main/jniLibs/arm64-v8a/liblibrustdesk.so flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
+      mv flutter/android/app/src/main/jniLibs/armeabi-v7a/liblibrustdesk.so flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
+      ls -la flutter/android/app/src/main/jniLibs/arm64-v8a/ flutter/android/app/src/main/jniLibs/armeabi-v7a/
+    - |
+      # Vérifier les symboles natifs (.symtab requis par Play)
+      # Ne PAS stripper ici : AGP (debugSymbolLevel) extrait les symboles vers
+      # BUNDLE-METADATA puis strippe les .so packagés.
+      READELF="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+      for abi in arm64-v8a armeabi-v7a; do
+        # Pas de pipe vers grep -q : grep quitte au 1er match → SIGPIPE sur
+        # llvm-readelf + pipefail = faux « ABSENT » (run 24, armv7).
+        sections="$("$READELF" -S "flutter/android/app/src/main/jniLibs/$abi/librustdesk.so" 2>/dev/null)" || true
+        case "$sections" in
+          *".symtab"*) echo "$abi: .symtab présent" ;;
+          *) echo "$abi: .symtab ABSENT — symboles Play manquants"; exit 1 ;;
+        esac
+      done
+    - |
+      # Setup release signing (keystore local)
+      # Keystore de PRODUCTION : ~/flowline-key.properties (hors repo) sur le runner
+      # self-hosted → copié tel quel. Fallback si absent : keystore jetable (artefact
+      # « unsigned », pour validation uniquement, JAMAIS de publication).
+      if [ -f "$HOME/flowline-key.properties" ]; then
+        chmod 600 "$HOME/flowline-key.properties" 2>/dev/null || true
+        cp "$HOME/flowline-key.properties" flutter/android/key.properties
+        chmod 600 flutter/android/key.properties
+        echo "OK: signature avec le keystore de production (local)"
+      else
+        # F4 (audit 21/09) : plus de mots de passe triviaux en dur dans un repo
+        # public, et chemin distinct du keystore prod. Keystore jetable par run
+        # dans le tmp du job (jamais réutilisé, jamais publié).
+        KS="$CI_TMP/flowline-ci-android.keystore"
+        PASS="$(openssl rand -hex 24)"
+        keytool -genkeypair -v -keystore "$KS" -alias flowline-ci -keyalg RSA -keysize 2048 \
+          -validity 1 -storepass "$PASS" -keypass "$PASS" \
+          -dname "CN=FlowLINE CI, OU=StreamLINE, O=StreamLINE Solutions, C=CH" 2>/dev/null
+        printf 'storeFile=%s\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=flowline-ci\n' \
+          "$KS" "$PASS" "$PASS" > flutter/android/key.properties
+        chmod 600 flutter/android/key.properties
+        echo "WARN: keystore jetable (fallback, mot de passe aléatoire) — pas de clé de production"
+      fi
+    - |
+      # Build FlowLINE Support APK (ex-step working-directory: flutter)
+      cd "$CI_PROJECT_DIR/flutter"
+      flutter precache --android
+      flutter build apk --release --build-number=$BUILD_NUMBER --target-platform android-arm64,android-arm
+      cp build/app/outputs/flutter-apk/app-release.apk "flowline-support-$VERSION.apk"
+      # Trace du versionCode effectif (Play/Zapstore) dans les logs CI.
+      "$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)" dump badging \
+        build/app/outputs/flutter-apk/app-release.apk | grep -m1 "versionCode" || true
+      cd "$CI_PROJECT_DIR"
+    - |
+      # Build FlowLINE Support AAB (Play Store) (ex-step working-directory: flutter)
+      cd "$CI_PROJECT_DIR/flutter"
+      flutter build appbundle --release --build-number=$BUILD_NUMBER --target-platform android-arm64,android-arm
+      cp build/app/outputs/bundle/release/app-release.aab "flowline-support-$VERSION.aab"
+      cd "$CI_PROJECT_DIR"
+  artifacts:
+    name: flowline-support-android-$VERSION
+    paths:
+      - flutter/flowline-support-$VERSION.apk
+      - flutter/flowline-support-$VERSION.aab
+    expire_in: 30 days
+  after_script:
+    # Équiv. du step « Cleanup git credentials » (if: always()) — le keystore
+    # jetable est aussi sous .ci-tmp.
+    - rm -rf "$CI_PROJECT_DIR/.ci-tmp"
+
+# -----------------------------------------------------------------------------
+# Windows x64 (remplace flowline-windows.yml)
+# -----------------------------------------------------------------------------
+build:windows:
+  stage: build
+  tags: [flowline-windows]
+  when: manual
+  allow_failure: false
+  timeout: 180 minutes  # ajustable
+  variables:
+    # SCITER_RUST_VERSION / LLVM_VERSION : toolchains attendus sur le runner
+    # (les actions dtolnay/rust-toolchain et install-llvm-action sont supprimées).
+    SCITER_RUST_VERSION: "1.88"
+    LLVM_VERSION: "15.0.6"
+    VERSION: "1.4.24"
+    # White-label : surcharger au Run pipeline pour une autre infra.
+    RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
+    RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
+    FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
+    # 0086 : signature Authenticode via SSL.com OV + eSigner (cloud HSM). Gated
+    # par la présence des 3 secrets ESIGNER_* : sans eux, build non signé
+    # (comportement historique). Quota Tier 1 : 240 signatures/an → ne signer
+    # que les artefacts livrés (MSI + one-file support), pas les builds de test.
+    ESIGNER_MODE: "product"
+    ESIGNER_CERT_NAME: "StreamLINE-Solutions Sàrl"
+  script:
+    - |
+      # Shell du job : PowerShell (le source forçait Windows PowerShell 5.1 +
+      # ExecutionPolicy Bypass ; le runner GitLab Windows exécute powershell
+      # -NoProfile -NonInteractive -ExecutionPolicy Bypass -File).
+      # $ErrorActionPreference=Stop : équiv. du runner GitHub (le template GitLab
+      # Windows PowerShell ne le pose pas lui-même).
+      # Les commandes natives sont suivies d'un contrôle $LASTEXITCODE explicite
+      # (fail-fast, le runner ne le fait pas pour ce shell).
+      $ErrorActionPreference = "Stop"
+      $ciTmp = Join-Path $env:CI_PROJECT_DIR ".ci-tmp"
+      New-Item -ItemType Directory -Force -Path $ciTmp | Out-Null
+
+      # checkout : géré par le runner (submodules récursifs ; prévoir aussi
+      # GIT_CLEAN_FLAGS côté runner pour préserver target/ et flutter/build/ —
+      # le source gardait le workspace avec clean: false).
+      #
+      # Gate signature eSigner (équiv. env.HAS_WIN_SIGNING du workflow GitHub) :
+      if ($env:ESIGNER_USERNAME -and $env:ESIGNER_PASSWORD -and $env:ESIGNER_TOTP_SECRET) {
+        $env:HAS_WIN_SIGNING = "true"
+      } else {
+        $env:HAS_WIN_SIGNING = "false"
+      }
+    - |
+      # Add 7-Zip and Git bash to PATH (hygiène runner ; GITHUB_PATH → $env:PATH)
+      # 7-Zip requis par l'extraction LLVM, Git\bin par les outils shell — les
+      # installeurs winget n'ajoutent pas forcément ces dossiers au PATH.
+      if (Test-Path "C:\Program Files\7-Zip") {
+        $env:PATH = "C:\Program Files\7-Zip;$env:PATH"
+      } elseif (Test-Path "C:\Program Files (x86)\7-Zip") {
+        $env:PATH = "C:\Program Files (x86)\7-Zip;$env:PATH"
+      } else {
+        throw "7-Zip not found - install via winget install --id 7zip.7zip"
+      }
+      if (Test-Path "C:\Program Files\Git\bin") {
+        $env:PATH = "C:\Program Files\Git\bin;$env:PATH"
+      } else {
+        throw "Git bin not found - install via winget install --id Git.Git"
+      }
+    - |
+      # Defender exclusions (idempotent, accélère les builds)
+      # 0065 : limitées aux chemins/outils de build — les exclusions larges
+      # (%TEMP%, git.exe, bash.exe, sh.exe) sont retirées à chaque run.
+      # NOTE : ajouter le répertoire de builds du runner GitLab (ex.
+      # C:\GitLab-Runner\builds) aux exclusions de chemin — le source couvrait
+      # C:\actions-runner.
+      $legacyPaths = @('C:\Users\User\AppData\Local\Temp')
+      foreach ($p in $legacyPaths) { Remove-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue }
+      $legacyProcs = @('git.exe','bash.exe','sh.exe')
+      foreach ($p in $legacyProcs) { Remove-MpPreference -ExclusionProcess $p -ErrorAction SilentlyContinue }
+      $paths = @(
+        'C:\actions-runner',
+        'C:\Users\User\.cargo',
+        'C:\Users\User\.rustup',
+        'C:\Users\User\.nuget',
+        'C:\Program Files\LLVM'
+      )
+      foreach ($p in $paths) { Add-MpPreference -ExclusionPath $p -ErrorAction SilentlyContinue }
+      $procs = @(
+        'rustc.exe','cargo.exe','cl.exe','link.exe','cmake.exe','ninja.exe',
+        'vcpkg.exe','dart.exe','gen_snapshot.exe'
+      )
+      foreach ($p in $procs) { Add-MpPreference -ExclusionProcess $p -ErrorAction SilentlyContinue }
+      "Exclusions Defender actives (paths) :"
+      Get-MpPreference | Select-Object -ExpandProperty ExclusionPath
+      "Exclusions Defender actives (procs) :"
+      Get-MpPreference | Select-Object -ExpandProperty ExclusionProcess
+    - |
+      # Nettoyage des artefacts du run précédent
+      # (workspace persistant côté runner : on retire les sorties non rejouables
+      # — mv/Expand-Archive échouent si la cible existe — avant de rebuilder ;
+      # target/ et flutter/build/ restent pour l'incrémental.)
+      $items = @(
+        'windows-x64-release.zip',
+        'windows-x64-release',
+        'rustdesk',
+        'rustdesk-support',
+        "flowline-${env:VERSION}-x86_64.msi",
+        "flowline-support-${env:VERSION}-onefile.exe"
+      )
+      foreach ($i in $items) {
+        if (Test-Path $i) { Remove-Item -Recurse -Force $i }
+      }
+    - |
+      # (step « Runner — démarrage auto au boot (tâche planifiée) » supprimé :
+      # spécifique au service GitHub Actions.)
+      #
+      # Configure git credentials (deps git privées, pubspec rustdesk-org/*)
+      # GIT_CONFIG_GLOBAL = config job-only (ne touche pas au ~/.gitconfig).
+      $gitcfg = Join-Path $ciTmp "git-global.conf"
+      $env:GITHUB_TOKEN = $env:FLOWLINE_GH_TOKEN
+      git config --file "$gitcfg" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+      if ($LASTEXITCODE -ne 0) { throw "git config credential.helper a échoué" }
+      $env:GIT_CONFIG_GLOBAL = $gitcfg
+    - |
+      # Install LLVM / CMake+Ninja / Python / jq / flutter : actions supprimées
+      # (toolchains persistants sur le runner ; jq ne servait qu'à subosito/flutter-action).
+      #
+      # Replace engine with rustdesk custom flutter engine
+      # (chemin du SDK Flutter via RUNNER_TOOL_CACHE — variable runner, cf. notes.md)
+      flutter doctor -v
+      flutter precache --windows
+      if ($LASTEXITCODE -ne 0) { throw "flutter precache --windows a échoué" }
+      Invoke-WebRequest -UseBasicParsing -Uri https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip -OutFile windows-x64-release.zip
+      # 0066 : SHA256 figé — le tag amont "main" est mouvant, donc fail-closed.
+      # Si le build casse ici, l'amont a republié : re-télécharger, vérifier,
+      # mettre à jour le hash ci-dessous.
+      $sha = (Get-FileHash -Algorithm SHA256 windows-x64-release.zip).Hash.ToLower()
+      if ($sha -ne "ec8cabf36ee4ff24c8d98de25b00e70781eb03876265aee84d0fe554a110036e") { throw "SHA256 engine invalide : $sha" }
+      Expand-Archive -Path windows-x64-release.zip -DestinationPath windows-x64-release
+      $engineDir = "$env:RUNNER_TOOL_CACHE\flutter\stable-${env:FLUTTER_VERSION}-x64\bin\cache\artifacts\engine\windows-x64-release"
+      New-Item -ItemType Directory -Force -Path $engineDir | Out-Null
+      Copy-Item -Force -Recurse -Path "windows-x64-release\*" -Destination $engineDir
+    - |
+      # Patch flutter (idempotent : le SDK persiste entre les runs)
+      $flutterSdkDir = Split-Path -Parent (Split-Path -Parent (Get-Command flutter).Source)
+      Copy-Item -Force .github\patches\flutter_3.24.4_dropdown_menu_enableFilter.diff $flutterSdkDir
+      Push-Location $flutterSdkDir
+      if ($env:FLUTTER_VERSION -eq "3.24.5") {
+        git apply --reverse --check flutter_3.24.4_dropdown_menu_enableFilter.diff 2>$null
+        if ($LASTEXITCODE -eq 0) {
+          "Patch déjà appliqué — skip"
+        } else {
+          git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+          if ($LASTEXITCODE -ne 0) { throw "git apply (patch flutter) a échoué" }
+        }
+      }
+      Pop-Location
+    - |
+      # Setup vcpkg (tool cache persistant, sans mise à jour)
+      # (lukka/run-vcpkg supprimée : le tool cache du runner persiste déjà
+      # vcpkg.exe + installed/, packages précompilés.)
+      $vcpkgRoot = Join-Path $env:RUNNER_TOOL_CACHE "vcpkg"
+      if (-not (Test-Path (Join-Path $vcpkgRoot "vcpkg.exe"))) {
+        throw "vcpkg.exe absent du tool cache ($vcpkgRoot)"
+      }
+      $env:VCPKG_ROOT = $vcpkgRoot
+      $env:VCPKG_DEFAULT_TRIPLET = "x64-windows-static"
+      $env:VCPKG_DEFAULT_HOST_TRIPLET = "x64-windows-static"
+      & (Join-Path $vcpkgRoot "vcpkg.exe") version
+      if ($LASTEXITCODE -ne 0) { throw "vcpkg version a échoué" }
+    - |
+      # Install vcpkg dependencies
+      $env:VCPKG_DEFAULT_HOST_TRIPLET = "x64-windows-static"
+      & "$env:VCPKG_ROOT\vcpkg.exe" install --triplet x64-windows-static --x-install-root="$env:VCPKG_ROOT\installed"
+      if ($LASTEXITCODE -ne 0) {
+        Get-ChildItem -Path "$env:VCPKG_ROOT" -Filter *.log -Recurse | ForEach-Object {
+          $_.FullName
+          "======"
+          Get-Content $_.FullName
+          "======"
+          ""
+        }
+        throw "vcpkg install a échoué"
+      }
+      Get-Content "$env:VCPKG_ROOT\buildtrees\ffmpeg\build-x64-windows-static-rel-out.log" -TotalCount 100 -ErrorAction SilentlyContinue
+    - |
+      # MSVC (cl/link) : ilammy/msvc-dev-cmd supprimée → l'environnement MSVC
+      # (vcvars64 ou équivalent) doit être fourni par le runner — cf. notes.md.
+      #
+      # Build FlowLINE (technicien)
+      $env:FLOWLINE_QUICK_SUPPORT = "0"
+      # Re-pointage VCPKG_ROOT conservé par fidélité (il contrait msvc-dev-cmd
+      # qui réécrivait VCPKG_ROOT vers le vcpkg embarqué de VS Build Tools).
+      $env:VCPKG_ROOT = "$env:RUNNER_TOOL_CACHE\vcpkg"
+      $env:VCPKG_INSTALLED_ROOT = "$env:RUNNER_TOOL_CACHE\vcpkg\installed"
+      python .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
+      if ($LASTEXITCODE -ne 0) { throw "build.py (technicien) a échoué" }
+      mv ./flutter/build/windows/x64/runner/Release ./rustdesk
+    - |
+      # ---- MSI (task 0035, Option A « build Windows 100 % CI ») ----
+      # Pattern upstream rustdesk (flutter-build.yml) : preprocess.py (branding +
+      # composants WiX auto) → nuget restore (WixToolset 4.0.5 + WcaUtil/DUtil) →
+      # msbuild. L'icône res/msi/icon.ico est copiée dans Package/Resources par
+      # preprocess.py (dossier git-ignoré) ; les bitmaps du wizard sont versionnés.
+      # (setup-nuget / setup-msbuild supprimées : nuget.exe et msbuild attendus
+      # sur le runner — cf. notes.md.)
+      pushd ./res/msi
+      python preprocess.py --arp -d ../../rustdesk --app-name FlowLINE -v ${env:VERSION} -m "StreamLINE Solutions"
+      if ($LASTEXITCODE -ne 0) { throw "preprocess.py (MSI) a échoué" }
+      nuget restore msi.sln
+      if ($LASTEXITCODE -ne 0) { throw "nuget restore a échoué" }
+      msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
+      if ($LASTEXITCODE -ne 0) { throw "msbuild a échoué" }
+      $msi = Get-ChildItem ./Package/bin/*/Release/en-us/Package.msi | Select-Object -First 1
+      popd
+      if (-not $msi) { throw "Package.msi introuvable après msbuild (res/msi)" }
+      Copy-Item -Force $msi.FullName "./flowline-${env:VERSION}-x86_64.msi"
+      Get-FileHash "./flowline-${env:VERSION}-x86_64.msi" -Algorithm SHA256 | Format-List
+    - |
+      # Build FlowLINE Support (QuickSupport)
+      $env:FLOWLINE_QUICK_SUPPORT = "1"
+      $env:VCPKG_ROOT = "$env:RUNNER_TOOL_CACHE\vcpkg"
+      $env:VCPKG_INSTALLED_ROOT = "$env:RUNNER_TOOL_CACHE\vcpkg\installed"
+      python .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
+      if ($LASTEXITCODE -ne 0) { throw "build.py (support) a échoué" }
+      mv ./flutter/build/windows/x64/runner/Release ./rustdesk-support
+      mv ./rustdesk-support/flowline.exe ./rustdesk-support/flowline-support.exe
+    - |
+      # Pack FlowLINE Support one-file (brotli + portable-packer)
+      python -m pip install -r libs/portable/requirements.txt
+      if ($LASTEXITCODE -ne 0) { throw "pip install (portable) a échoué" }
+      python libs/portable/generate.py -f ./rustdesk-support -o libs/portable -e ./rustdesk-support/flowline-support.exe
+      if ($LASTEXITCODE -ne 0) { throw "generate.py (portable) a échoué" }
+      cargo build -p rustdesk-portable-packer --release
+      if ($LASTEXITCODE -ne 0) { throw "cargo build (portable-packer) a échoué" }
+      Copy-Item -Force ./target/release/rustdesk-portable-packer.exe "./flowline-support-${env:VERSION}-onefile.exe"
+      Get-FileHash "./flowline-support-${env:VERSION}-onefile.exe" -Algorithm SHA256 | Format-List
+    - |
+      # ---- Signature Authenticode (0086) : SSL.com OV + eSigner Cloud ----
+      # Gated par HAS_WIN_SIGNING : sans secrets ESIGNER_*, les étapes sont
+      # sautées et les artefacts restent non signés.
+      # CKA 1.1.2 (SSL.com) : le master.key est généré localement par `config -r`
+      # (pas de secret à fournir) ; `load`/`unload` seuls (pas d'arguments) ;
+      # le certificat est ensuite sélectionné par thumbprint (subject StreamLINE).
+      #
+      # Install eSigner CKA (SSL.com cloud signing)
+      if ($env:HAS_WIN_SIGNING -eq "true") {
+        $env:ESIGNER_CKA_URL = "https://github.com/SSLcom/eSignerCKA/releases/download/v1.1.2/SSL.COM.eSigner.CKA_1.1.2_build_202600624.exe"
+        $env:ESIGNER_CKA_SHA256 = "3f088403139505ddfb0ed3b56b72893f92c865f98b382753a1e1c695a5cece35"
+        Invoke-WebRequest -UseBasicParsing -Uri $env:ESIGNER_CKA_URL -OutFile "$ciTmp\eSigner_CKA_Installer.exe"
+        $hash = (Get-FileHash "$ciTmp\eSigner_CKA_Installer.exe" -Algorithm SHA256).Hash
+        if ($hash -ne $env:ESIGNER_CKA_SHA256.ToUpper()) { throw "SHA256 installeur CKA invalide : $hash" }
+        $ckaDir = Join-Path $env:LOCALAPPDATA 'eSignerCKA'
+        Start-Process -Wait -FilePath "$ciTmp\eSigner_CKA_Installer.exe" -ArgumentList '/CURRENTUSER','/VERYSILENT',"/DIR=$ckaDir"
+        $cka = Join-Path $ckaDir 'eSignerCKATool.exe'
+        if (-not (Test-Path $cka)) { throw "eSignerCKATool.exe introuvable après installation : $cka" }
+        $env:ESIGNER_CKA = $cka
+      }
+    - |
+      # Configure eSigner CKA (automated) and load certificate
+      # Le TOTP secret (secret code de l'enrôlement eSigner) permet la
+      # génération automatique des codes 2FA (mode automatisé, pas d'OTP
+      # interactif). Le master.key est généré localement (-r) et supprimé en
+      # fin de job (runner persistant — cleanup after_script).
+      if ($env:HAS_WIN_SIGNING -eq "true") {
+        $masterKey = Join-Path $ciTmp 'esigner-master.key'
+        & $env:ESIGNER_CKA config -mode $env:ESIGNER_MODE -user $env:ESIGNER_USERNAME -pass $env:ESIGNER_PASSWORD -totp $env:ESIGNER_TOTP_SECRET -key $masterKey -r
+        if ($LASTEXITCODE -ne 0) { throw "eSigner CKA config échoué ($LASTEXITCODE)" }
+        & $env:ESIGNER_CKA unload 2>$null
+        & $env:ESIGNER_CKA load
+        if ($LASTEXITCODE -ne 0) { throw "eSigner CKA load échoué ($LASTEXITCODE)" }
+        $tp = (Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert |
+          Where-Object { $_.Subject -like "*StreamLINE-Solutions*" } |
+          Sort-Object NotAfter -Descending | Select-Object -First 1).Thumbprint
+        if (-not $tp) { throw "Thumbprint du certificat eSigner introuvable" }
+        $env:ESIGNER_THUMBPRINT = $tp
+      }
+    - |
+      # Sign MSI + one-file (Authenticode, horodatage RFC3161)
+      # Piège connu : timestamp ECDSA → si « minimum public key length »,
+      # utiliser http://ts.ssl.com/legacy (RSA).
+      if ($env:HAS_WIN_SIGNING -eq "true") {
+        $files = @(
+          "flowline-${env:VERSION}-x86_64.msi",
+          "flowline-support-${env:VERSION}-onefile.exe"
+        )
+        foreach ($f in $files) {
+          signtool sign /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 $env:ESIGNER_THUMBPRINT $f
+          if ($LASTEXITCODE -ne 0) { throw "signtool sign a échoué : $f" }
+          signtool verify /pa $f
+          if ($LASTEXITCODE -ne 0) { throw "signtool verify a échoué : $f" }
+        }
+      }
+  artifacts:
+    # Un seul artefact GitLab par job : les 4 artefacts GitHub (rustdesk,
+    # rustdesk-support, msi, one-file) sont fusionnés. Voir notes.md.
+    name: flowline-windows-x64-$VERSION
+    paths:
+      - rustdesk
+      - rustdesk-support
+      - flowline-$VERSION-x86_64.msi
+      - flowline-support-$VERSION-onefile.exe
+    expire_in: 30 days
+  after_script:
+    # Équiv. des steps « if: always() » : Cleanup eSigner (master.key + unload)
+    # + Cleanup git credentials — runner persistant, ne rien laisser derrière.
+    - |
+      $cka = Join-Path (Join-Path $env:LOCALAPPDATA 'eSignerCKA') 'eSignerCKATool.exe'
+      if (Test-Path $cka) { & $cka unload 2>$null }
+      Remove-Item -Force -ErrorAction SilentlyContinue "$env:CI_PROJECT_DIR\.ci-tmp\esigner-master.key"
+      Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$env:CI_PROJECT_DIR\.ci-tmp"
+
+# -----------------------------------------------------------------------------
+# macOS (remplace flowline-macos.yml) — template commun aux 2 arches
+# (le source utilisait une matrice x86_64 cross + aarch64 → 2 jobs GitLab)
+# -----------------------------------------------------------------------------
+.build-macos:
+  stage: build
+  tags: [flowline-macos]
+  when: manual
+  allow_failure: false
+  timeout: 180 minutes  # ajustable
+  variables:
+    # Toolchain attendu sur le runner (action dtolnay/rust-toolchain supprimée).
+    MAC_RUST_VERSION: "1.88"
+    LLVM_VERSION: "15.0.6"
+    VERSION: "1.4.24"
+    # Xcode 27 : `strip = true` (profil release) produit des Mach-O corrompus
+    # (« mis-aligned LINKEDIT string pool ») — la dylib proc-macro cidre_macros
+    # devient illisible (E0463) et le build aarch64 échoue. Strip désactivé en CI
+    # (bug Apple ld/strip) ; cf. ticket 0081. À réévaluer après mise à jour Xcode.
+    CARGO_PROFILE_RELEASE_STRIP: "none"
+    # bindgen doit charger le libclang de Xcode, pas celui de Homebrew LLVM :
+    # `llvm-config` est dans le PATH du runner et clang-sys découvre ainsi
+    # /opt/homebrew/opt/llvm (23.x). Avec ce libclang, les bindings x86_64
+    # cross-compilés sont corrompus (structs cfg vpx/aom rendues opaques → E0609).
+    LIBCLANG_PATH: "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib"
+    # White-label : surcharger au Run pipeline pour une autre infra.
+    RUSTDESK_RENDEZVOUS_SERVERS: "falcon.my-vth.ch"
+    RUSTDESK_RS_PUB_KEY: "y7HFkRp6dnePO7+ehiUSpbhUIqAwnRYDdquULvqJQXg="
+    FLOWLINE_API_SERVER: "https://api-falcon.my-vth.ch"
+    # Signature Developer ID (identité publique, dans le repo) :
+    SIGN_IDENTITY: "Developer ID Application: StreamLINE-Solutions Sarl (DSGXA9V62W)"
+  script:
+    - |
+      # Setup local build cache (runner persistant)
+      # Cache cargo persistant hors workspace (survit au nettoyage du checkout)
+      # → builds incrémentaux.
+      CACHE_ROOT="${RUNNER_TOOL_CACHE:-$HOME/.cache}/flowline-cache"
+      mkdir -p "$CACHE_ROOT"
+      export CARGO_TARGET_DIR="$CACHE_ROOT/cargo"
+
+      # checkout : géré par le runner (submodules récursifs côté runner).
+      #
+      # Configure git credentials (deps git privées, pubspec rustdesk-org/*)
+      # flutter pub get clone les deps git privées dans ~/.pub-cache : le
+      # credential du checkout ne s'applique pas à ces clones → helper global.
+      CI_TMP="$CI_PROJECT_DIR/.ci-tmp"
+      mkdir -p "$CI_TMP"
+      GITCFG="$CI_TMP/git-global.conf"
+      export GITHUB_TOKEN="$FLOWLINE_GH_TOKEN"
+      git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+      export GIT_CONFIG_GLOBAL="$GITCFG"
+
+      # Gate signature (équiv. env.HAS_SIGNING) : Developer ID + notarisation
+      # activées dès que les 6 secrets existent ; sinon signature ad hoc
+      # (comportement historique, DMG non notarisé).
+      if [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -n "$P12_PASSWORD" ] && [ -n "$KEYCHAIN_PASSWORD" ] && [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -n "$ASC_API_KEY_P8" ]; then
+        export HAS_SIGNING="true"
+      else
+        export HAS_SIGNING="false"
+      fi
+    - |
+      # Install build runtime (idempotent : brew ne réinstalle pas)
+      brew install llvm create-dmg
+      if command -v pkg-config &>/dev/null; then
+          echo "pkg-config is already installed"
+      else
+          brew install pkg-config
+      fi
+    - |
+      # Install NASM
+      wget https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/macosx/nasm-2.16.03-macosx.zip
+      # 0066 : SHA256 figé (fail-closed).
+      echo "0d29bcd8a5fc617333f4549c7c1f93d1866a4a0915c40359e0a8585bb1a5aa75  nasm-2.16.03-macosx.zip" | shasum -a 256 -c -
+      unzip nasm-2.16.03-macosx.zip
+      sudo cp nasm-2.16.03/nasm /usr/local/bin/nasm
+      # Le PATH du runner peut contenir un autre nasm (Homebrew 3.x, incompatible aom) :
+      # forcer /usr/local/bin en tête pour les étapes suivantes (aom/ffmpeg x86_64).
+      export PATH="/usr/local/bin:$PATH"
+      /usr/local/bin/nasm --version
+    - |
+      # Install flutter : SDK 3.24.5 persistant sur le runner (action supprimée).
+      #
+      # Patch flutter
+      # SDK Flutter persistant (tool cache du runner self-hosted) : repartir d'un
+      # état propre, sinon git apply échoue au 2e job (patch déjà appliqué par le 1er).
+      FLUTTER_SDK_DIR="$(dirname "$(dirname "$(which flutter)")")"
+      cd "$FLUTTER_SDK_DIR"
+      git checkout -- .
+      [[ "3.24.5" == "$FLUTTER_VERSION" ]] && git apply "$CI_PROJECT_DIR/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff"
+      cd "$CI_PROJECT_DIR"
+    - |
+      # Workaround for flutter issue
+      # https://github.com/flutter/flutter/issues/133533
+      cd "$(dirname "$(which flutter)")"
+      sed -i -e 's/_setFramesEnabledState(false);/\/\/_setFramesEnabledState(false);/g' ../packages/flutter/lib/src/scheduler/binding.dart
+      grep -n '_setFramesEnabledState(false);' ../packages/flutter/lib/src/scheduler/binding.dart
+      cd "$CI_PROJECT_DIR"
+    - |
+      # Rust toolchain / rust-cache (if runner.environment != 'self-hosted') /
+      # lukka/run-vcpkg : supprimés (toolchains persistants, condition runner.environment
+      # abandonnée). VCPKG_ROOT attendu côté runner.
+      #
+      # Install vcpkg dependencies (triplet par arch : x64-osx / arm64-osx)
+      # Cache binaire local persistant (hors workspace, partagé entre arches) —
+      # identique au source ; il écrase la variable globale VCPKG_BINARY_SOURCES.
+      export VCPKG_DEFAULT_TRIPLET="$MAC_VCPKG_TRIPLET"
+      export VCPKG_BINARY_SOURCES="clear;files,$CACHE_ROOT/vcpkg-bincache,readwrite"
+      mkdir -p "$CACHE_ROOT/vcpkg-bincache"
+      if ! "$VCPKG_ROOT/vcpkg" \
+        install \
+        --x-install-root="$VCPKG_ROOT/installed"; then
+        find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+          echo "$_1:"
+          echo "======"
+          cat "$_1"
+          echo "======"
+          echo ""
+        done
+        exit 1
+      fi
+      head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-$VCPKG_DEFAULT_TRIPLET-rel-out.log" || true
+    - |
+      # Import Developer ID certificate (si HAS_SIGNING)
+      # .p12 importé dans un keychain temporaire (supprimé par le cleanup after_script).
+      KEYCHAIN_PATH="$CI_TMP/app-signing.keychain-db"
+      if [ "$HAS_SIGNING" = "true" ]; then
+        CERTIFICATE_PATH="$CI_TMP/build_certificate.p12"
+        # Secrets saisis via l'UI GitHub : retirer les \r\n parasites éventuels
+        # (un saut de ligne final invalide le mot de passe p12 / les IDs notarytool).
+        BUILD_CERTIFICATE_BASE64="$(printf '%s' "$BUILD_CERTIFICATE_BASE64" | tr -d '\r\n')"
+        P12_PASSWORD="$(printf '%s' "$P12_PASSWORD" | tr -d '\r\n')"
+        KEYCHAIN_PASSWORD="$(printf '%s' "$KEYCHAIN_PASSWORD" | tr -d '\r\n')"
+        printf '%s' "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+        security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        rm -f "$CERTIFICATE_PATH"
+      fi
+    - |
+      # Build FlowLINE (technicien)
+      # Xcode 27 refuse tout deployment target < 12.0 (plage 12.0–27.0) :
+      # les deux arches sont alignées sur 12.3 (min x86_64 relevé de 10.14).
+      # Les cibles Pods (podspecs Flutter à 10.14) sont forcées à 12.3 par
+      # le post_install du Podfile. Cf. ticket 0081.
+      export FLOWLINE_QUICK_SUPPORT="0"
+      MIN_MACOS_VERSION="12.3"
+      sed -i -e "s/MACOSX_DEPLOYMENT_TARGET\=[0-9]*.[0-9]*/MACOSX_DEPLOYMENT_TARGET=${MIN_MACOS_VERSION}/" build.py
+      sed -i -e "s/platform :osx, '.*'/platform :osx, '${MIN_MACOS_VERSION}'/" flutter/macos/Podfile
+      sed -i -e "s/osx_minimum_system_version = \"[0-9]*.[0-9]*\"/osx_minimum_system_version = \"${MIN_MACOS_VERSION}\"/" Cargo.toml
+      sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
+      ./build.py --flutter --hwcodec --unix-file-copy-paste $MAC_EXTRA_BUILD_ARGS
+    - |
+      # Codesign (technicien)
+      # Signature inside-out : frameworks/dylibs, puis binaires, puis l'app avec
+      # entitlements (hardened runtime + timestamp requis pour la notarisation).
+      # --keychain explicite : sur ce runner, codesign ne résout pas l'identité via
+      # la search list (errSecInternalComponent sinon).
+      # if HAS_SIGNING == true : Developer ID — sinon signature ad hoc (non notarisé :
+      # l'utilisateur passe par clic droit → Ouvrir).
+      APP="./flutter/build/macos/Build/Products/Release/FlowLINE.app"
+      if [ "$HAS_SIGNING" = "true" ]; then
+        for item in "$APP"/Contents/Frameworks/*.framework "$APP"/Contents/Frameworks/*.dylib; do
+          codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$item"
+        done
+        codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$APP/Contents/MacOS/service"
+        codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" \
+          --entitlements flutter/macos/Runner/Release.entitlements "$APP"
+        codesign --verify --deep --strict --verbose=2 "$APP"
+        codesign -dv --verbose=4 "$APP" 2>&1 | grep -E "Authority|TeamIdentifier"
+      else
+        # Signature uniforme du bundle : sans elle, binaire principal ad hoc +
+        # framework FlutterMacOS signé Google → crash dyld arm64 "different Team IDs".
+        codesign --force --deep --sign - "$APP"
+        codesign --verify --deep --strict --verbose=2 "$APP"
+      fi
+    - |
+      # create dmg (technicien)
+      # --skip-jenkins : pas d'AppleScript Finder (TCC Automation indisponible sur le
+      # runner → « Délai dépassé pour un AppleEvent » -1712). Pas de mise en page custom.
+      CREATE_DMG="$(command -v create-dmg)"
+      CREATE_DMG="$(readlink -f "$CREATE_DMG")"
+      sed -i -e 's/MAXIMUM_UNMOUNTING_ATTEMPTS=3/MAXIMUM_UNMOUNTING_ATTEMPTS=7/' "$CREATE_DMG"
+      create-dmg --skip-jenkins --icon "FlowLINE.app" 200 190 --hide-extension "FlowLINE.app" --window-size 800 400 --app-drop-link 600 185 "flowline-$VERSION-$MAC_ARCH.dmg" ./flutter/build/macos/Build/Products/Release/FlowLINE.app
+    - |
+      # Sign, notarize and staple dmg (technicien, si HAS_SIGNING)
+      if [ "$HAS_SIGNING" = "true" ]; then
+        DMG="flowline-$VERSION-$MAC_ARCH.dmg"
+        # IDs saisis via l'UI GitHub : retirer les \r\n parasites éventuels.
+        ASC_KEY_ID="$(printf '%s' "$ASC_KEY_ID" | tr -d '\r\n')"
+        ASC_ISSUER_ID="$(printf '%s' "$ASC_ISSUER_ID" | tr -d '\r\n')"
+        printf '%s' "$ASC_API_KEY_P8" > "$CI_TMP/AuthKey.p8"
+        codesign --force --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$DMG"
+        xcrun notarytool submit "$DMG" --key "$CI_TMP/AuthKey.p8" \
+          --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait
+        xcrun stapler staple "$DMG"
+        xcrun stapler validate "$DMG"
+        spctl --assess --type open --context context:primary-signature -v "$DMG"
+      fi
+    - |
+      # Build FlowLINE Support (QuickSupport)
+      # Variante Support : feature cargo `quick-support` (incoming-only, UI réduite) —
+      # cross-platform (hbb_common), le dmg suffit sur macOS (pas de packer one-file).
+      # Profite du cache cargo/flutter du build technicien (recompilation partielle).
+      export FLOWLINE_QUICK_SUPPORT="1"
+      ./build.py --flutter --hwcodec --unix-file-copy-paste $MAC_EXTRA_BUILD_ARGS
+    - |
+      # Codesign (Support)
+      # Rebuild Support écrase le même chemin de sortie → re-signature obligatoire.
+      APP="./flutter/build/macos/Build/Products/Release/FlowLINE.app"
+      if [ "$HAS_SIGNING" = "true" ]; then
+        for item in "$APP"/Contents/Frameworks/*.framework "$APP"/Contents/Frameworks/*.dylib; do
+          codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$item"
+        done
+        codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$APP/Contents/MacOS/service"
+        codesign --force --options runtime --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" \
+          --entitlements flutter/macos/Runner/Release.entitlements "$APP"
+        codesign --verify --deep --strict --verbose=2 "$APP"
+      else
+        codesign --force --deep --sign - "$APP"
+        codesign --verify --deep --strict --verbose=2 "$APP"
+      fi
+    - |
+      # create dmg (Support)
+      CREATE_DMG="$(command -v create-dmg)"
+      CREATE_DMG="$(readlink -f "$CREATE_DMG")"
+      sed -i -e 's/MAXIMUM_UNMOUNTING_ATTEMPTS=3/MAXIMUM_UNMOUNTING_ATTEMPTS=7/' "$CREATE_DMG"
+      create-dmg --skip-jenkins --icon "FlowLINE.app" 200 190 --hide-extension "FlowLINE.app" --window-size 800 400 --app-drop-link 600 185 "flowline-support-$VERSION-$MAC_ARCH.dmg" ./flutter/build/macos/Build/Products/Release/FlowLINE.app
+    - |
+      # Sign, notarize and staple dmg (Support, si HAS_SIGNING)
+      if [ "$HAS_SIGNING" = "true" ]; then
+        DMG="flowline-support-$VERSION-$MAC_ARCH.dmg"
+        ASC_KEY_ID="$(printf '%s' "$ASC_KEY_ID" | tr -d '\r\n')"
+        ASC_ISSUER_ID="$(printf '%s' "$ASC_ISSUER_ID" | tr -d '\r\n')"
+        printf '%s' "$ASC_API_KEY_P8" > "$CI_TMP/AuthKey.p8"
+        codesign --force --timestamp --keychain "$KEYCHAIN_PATH" -s "$SIGN_IDENTITY" "$DMG"
+        xcrun notarytool submit "$DMG" --key "$CI_TMP/AuthKey.p8" \
+          --key-id "$ASC_KEY_ID" --issuer "$ASC_ISSUER_ID" --wait
+        xcrun stapler staple "$DMG"
+        xcrun stapler validate "$DMG"
+        spctl --assess --type open --context context:primary-signature -v "$DMG"
+      fi
+  after_script:
+    # Équiv. des steps « if: always() » : keychain de signature + fichiers
+    # temporaires + git credentials — runner persistant, ne rien laisser derrière.
+    - |
+      security delete-keychain "$CI_PROJECT_DIR/.ci-tmp/app-signing.keychain-db" || true
+      rm -rf "$CI_PROJECT_DIR/.ci-tmp"
+
+# macOS x86_64 (cross-compilé depuis arm64 : cargo --target + FLUTTER_XCODE_ARCHS)
+build:macos:x86_64:
+  extends: .build-macos
+  variables:
+    MAC_ARCH: "x86_64"
+    MAC_VCPKG_TRIPLET: "x64-osx"
+    MAC_EXTRA_BUILD_ARGS: "--mac-target x86_64-apple-darwin"
+  artifacts:
+    # Fusion des 2 artefacts GitHub (app + support) — 1 seul artefact GitLab/job.
+    name: flowline-macos-x86_64-$VERSION
+    paths:
+      - flowline-$VERSION-x86_64.dmg
+      - flowline-support-$VERSION-x86_64.dmg
+    expire_in: 30 days
+
+# macOS aarch64 (natif, + --screencapturekit)
+build:macos:aarch64:
+  extends: .build-macos
+  variables:
+    MAC_ARCH: "aarch64"
+    MAC_VCPKG_TRIPLET: "arm64-osx"
+    MAC_EXTRA_BUILD_ARGS: "--mac-target aarch64-apple-darwin --screencapturekit"
+  artifacts:
+    name: flowline-macos-aarch64-$VERSION
+    paths:
+      - flowline-$VERSION-aarch64.dmg
+      - flowline-support-$VERSION-aarch64.dmg
+    expire_in: 30 days
+
+# -----------------------------------------------------------------------------
+# iOS Support (remplace flowline-ios-support.yml)
+# -----------------------------------------------------------------------------
+build:ios:
+  stage: build
+  tags: [flowline-macos]
+  when: manual
+  allow_failure: false
+  timeout: 90 minutes  # ajustable
+  variables:
+    MAC_RUST_VERSION: "1.88"
+    VERSION: "1.4.22"  # TODO: verifier — 1.4.22 vs 1.4.24 ailleurs
+    # Xcode 27 : `strip = true` (profil release) produit des Mach-O corrompus
+    # (cf. 0081 / flowline-macos.yml) — strip désactivé en CI.
+    CARGO_PROFILE_RELEASE_STRIP: "none"
+    # Défaut rustc pour aarch64-apple-ios = 10.0 → symboles compiler-rt manquants
+    # (___chkstk_darwin des objets aom/vcpkg) ; aligner sur la cible de l'app (15.0).
+    IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+    # bindgen doit charger le libclang de Xcode, pas celui de Homebrew LLVM.
+    LIBCLANG_PATH: "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib"
+    # Build NON SIGNÉ par défaut = smoke test du toolchain complet (aucune ipa
+    # installable). Pour une IPA signée : Run pipeline avec SIGNED=true
+    # (nécessite les secrets ASC_* + une clé API ASC « Team + Admin »).
+    # ⚠ Flutter 3.24 + Xcode 27 : UIScene lifecycle (iOS 27 SDK) non géré par
+    # cette version de Flutter — à trancher dans 0029.
+    SIGNED: "false"
+  script:
+    - |
+      # Setup local build cache (runner persistant)
+      CACHE_ROOT="${RUNNER_TOOL_CACHE:-$HOME/.cache}/flowline-cache"
+      mkdir -p "$CACHE_ROOT"
+      export CARGO_TARGET_DIR="$CACHE_ROOT/cargo-ios"
+
+      # checkout : géré par le runner (submodules récursifs côté runner).
+      #
+      # Configure git credentials (deps git privées)
+      CI_TMP="$CI_PROJECT_DIR/.ci-tmp"
+      mkdir -p "$CI_TMP"
+      GITCFG="$CI_TMP/git-global.conf"
+      export GITHUB_TOKEN="$FLOWLINE_GH_TOKEN"
+      git config --file "$GITCFG" credential.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+      export GIT_CONFIG_GLOBAL="$GITCFG"
+    - |
+      # Install flutter : SDK 3.24.5 persistant sur le runner (action supprimée).
+      #
+      # Patch flutter
+      # SDK Flutter persistant (tool cache du runner self-hosté) : repartir d'un
+      # état propre, sinon git apply échoue au 2e run (patch déjà appliqué).
+      FLUTTER_SDK_DIR="$(dirname "$(dirname "$(which flutter)")")"
+      cd "$FLUTTER_SDK_DIR"
+      git checkout -- .
+      [[ "3.24.5" == "$FLUTTER_VERSION" ]] && git apply "$CI_PROJECT_DIR/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff"
+      cd "$CI_PROJECT_DIR"
+    - |
+      # Rust toolchain / lukka/run-vcpkg : supprimés (toolchains persistants ;
+      # VCPKG_ROOT attendu côté runner).
+      #
+      # Install vcpkg dependencies (arm64-ios)
+      # hwcodec et magnum-opus lisent $VCPKG_ROOT/installed/arm64-ios (ffmpeg, opus).
+      # Cache binaire local persistant (partagé avec les builds macOS) — comme le
+      # source ; il écrase la variable globale VCPKG_BINARY_SOURCES.
+      export VCPKG_DEFAULT_TRIPLET="arm64-ios"
+      export VCPKG_BINARY_SOURCES="clear;files,$CACHE_ROOT/vcpkg-bincache,readwrite"
+      mkdir -p "$CACHE_ROOT/vcpkg-bincache"
+      if ! "$VCPKG_ROOT/vcpkg" \
+        install \
+        --x-install-root="$VCPKG_ROOT/installed"; then
+        find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+          echo "$_1:"
+          echo "======"
+          cat "$_1"
+          echo "======"
+          echo ""
+        done
+        exit 1
+      fi
+    - |
+      # Build Rust (iOS arm64, support)
+      # bindgen cross-compile : clang a besoin du sysroot du SDK iOS pour trouver
+      # <stdint.h> (sinon « unknown type name 'uint8_t' » dans hwcodec).
+      export BINDGEN_EXTRA_CLANG_ARGS_aarch64_apple_ios="--sysroot=$(xcrun --sdk iphoneos --show-sdk-path)"
+      # src/version.rs est généré par build.rs (gitignoré) : le checkout le nettoie
+      # mais le build script reste en cache (cache cargo persistant du runner) →
+      # forcer sa ré-exécution sinon E0583 « file not found for module version ».
+      touch build.rs
+      cargo build --locked --features flutter,hwcodec,quick-support --release --target aarch64-apple-ios --lib
+      # Le pbxproj lie ../../target/aarch64-apple-ios/release/liblibrustdesk.a :
+      # recopier depuis le cache cargo persistant (CARGO_TARGET_DIR).
+      mkdir -p target/aarch64-apple-ios/release
+      cp "$CARGO_TARGET_DIR/aarch64-apple-ios/release/liblibrustdesk.a" target/aarch64-apple-ios/release/
+    - |
+      # Flutter pub get (ex-step working-directory: flutter)
+      cd "$CI_PROJECT_DIR/flutter"
+      flutter pub get
+      cd "$CI_PROJECT_DIR"
+    - |
+      # Build iOS non signé (smoke test)
+      cd "$CI_PROJECT_DIR/flutter"
+      flutter build ios --release --no-codesign
+      cd "$CI_PROJECT_DIR"
+    - |
+      # Prepare App Store Connect API key (si SIGNED=true)
+      if [ "$SIGNED" = "true" ]; then
+        ASC_KEY_ID="$(printf '%s' "$ASC_KEY_ID" | tr -d '\r\n')"
+        if [ -z "$ASC_API_KEY_P8" ] || [ -z "$ASC_KEY_ID" ]; then
+          echo "ERROR: Secrets ASC_* manquants (cf. 0029) — build signé impossible."
+          exit 1
+        fi
+        mkdir -p ~/.appstoreconnect/private_keys
+        printf '%s' "$ASC_API_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+      fi
+    - |
+      # Archive + export IPA (signé, si SIGNED=true)
+      # flutter build ipa (3.24) ne passe pas les flags d'auth à l'archive
+      # (flutter/flutter#139212) → xcodebuild manuel archive + export.
+      if [ "$SIGNED" = "true" ]; then
+        cd "$CI_PROJECT_DIR/flutter/ios"
+        set -euo pipefail
+        ASC_KEY_ID="$(printf '%s' "$ASC_KEY_ID" | tr -d '\r\n')"
+        ASC_ISSUER_ID="$(printf '%s' "$ASC_ISSUER_ID" | tr -d '\r\n')"
+        KEY="$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+        AUTH=(-allowProvisioningUpdates -allowProvisioningDeviceRegistration
+              -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID"
+              -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+        xcodebuild archive -workspace Runner.xcworkspace -scheme Runner \
+          -configuration Release -destination 'generic/platform=iOS' \
+          -archivePath build/Runner.xcarchive "${AUTH[@]}"
+        xcodebuild -exportArchive -archivePath build/Runner.xcarchive \
+          -exportOptionsPlist exportOptions.plist -exportPath build/ipa "${AUTH[@]}"
+        cd "$CI_PROJECT_DIR"
+      fi
+    - |
+      # Upload app non signée (smoke) — zip vers la racine du projet
+      # (ex-step sans working-directory, cd interne conservé)
+      cd "$CI_PROJECT_DIR/flutter/build/ios/iphoneos"
+      zip -qry "$CI_PROJECT_DIR/flowline-support-ios-unsigned-$VERSION.app.zip" Runner.app
+      cd "$CI_PROJECT_DIR"
+  artifacts:
+    # Fusion des 2 artefacts GitHub (zip non signé + IPA) — 1 seul artefact GitLab.
+    # Le chemin de l'IPA n'existe que si SIGNED=true : sinon GitLab émet un
+    # avertissement « no matching files » (sans faire échouer le job).
+    name: flowline-support-ios-unsigned-$VERSION
+    paths:
+      - flowline-support-ios-unsigned-$VERSION.app.zip
+      - flutter/ios/build/ipa/*.ipa
+    expire_in: 30 days
+  after_script:
+    # Équiv. des steps « if: always() » : clé API ASC + git credentials.
+    - |
+      if [ "$SIGNED" = "true" ]; then
+        rm -f "$HOME/.appstoreconnect/private_keys/"AuthKey_*.p8
+      fi
+      rm -rf "$CI_PROJECT_DIR/.ci-tmp"
