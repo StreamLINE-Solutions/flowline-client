@@ -1,0 +1,45 @@
+# Allowlist OSV — baseline acceptée le 2026-10-20 (ticket 0112).
+# Format : <id> <paquet>. Toute nouvelle paire fait échouer le gate CI.
+# Réévaluer à chaque veille mensuelle ; retirer une ligne = exiger un correctif.
+GHSA-2p6r-x3vv-xqm2 rpassword
+GHSA-g98v-hv3f-hcfr atty
+GHSA-wcg3-cvx6-7396 time
+GHSA-wrw7-89jp-8q8g glib
+RUSTSEC-2017-0008 serial
+RUSTSEC-2020-0071 time
+RUSTSEC-2021-0137 sodiumoxide
+RUSTSEC-2021-0139 ansi_term
+RUSTSEC-2021-0145 atty
+RUSTSEC-2022-0056 clipboard
+RUSTSEC-2023-0051 dlopen_derive
+RUSTSEC-2024-0370 proc-macro-error
+RUSTSEC-2024-0375 atty
+RUSTSEC-2024-0384 instant
+RUSTSEC-2024-0388 derivative
+RUSTSEC-2024-0429 glib
+RUSTSEC-2024-0436 paste
+RUSTSEC-2025-0056 adler
+RUSTSEC-2025-0075 unic-char-range
+RUSTSEC-2025-0080 unic-common
+RUSTSEC-2025-0081 unic-char-property
+RUSTSEC-2025-0083 unic-ucd-bidi
+RUSTSEC-2025-0096 unic-bidi
+RUSTSEC-2025-0098 unic-ucd-version
+RUSTSEC-2025-0124 rand_os
+RUSTSEC-2025-0141 bincode
+RUSTSEC-2026-0192 ttf-parser
+RUSTSEC-2026-0338 quinn-proto
+RUSTSEC-2026-0339 quinn-proto
+RUSTSEC-2026-0340 quinn-proto
+RUSTSEC-2026-0341 quinn-proto
+RUSTSEC-2026-0342 quinn-proto
+RUSTSEC-2026-0346 rustls
+RUSTSEC-2026-0347 rustls
+RUSTSEC-2026-0348 rustls
+RUSTSEC-2026-0349 rustls
+RUSTSEC-2026-0367 zip
+RUSTSEC-2026-0368 zip
+RUSTSEC-2026-0369 zip
+RUSTSEC-2026-0370 zvariant
+RUSTSEC-2026-0371 zbus_names
+RUSTSEC-2026-0372 zvariant_derive
