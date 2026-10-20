@@ -43,3 +43,28 @@ RUSTSEC-2026-0369 zip
 RUSTSEC-2026-0370 zvariant
 RUSTSEC-2026-0371 zbus_names
 RUSTSEC-2026-0372 zvariant_derive
+
+# --- App Nextcloud : dependances de build/dev uniquement (npm audit --omit=dev = 0) ---
+# Non embarquees dans le bundle Vite. Reevaluer a chaque veille mensuelle.
+GHSA-2883-xcg3-v3hh js-yaml
+GHSA-477h-4r7f-fvrx pbkdf2
+GHSA-4mjr-xmp4-gh2g qs
+GHSA-4p3w-j4w9-5jqw moment
+GHSA-58mr-gqgx-xq4g fast-uri
+GHSA-698v-4r3x-3vcv vite
+GHSA-6j4f-fj2g-mc7p brace-expansion
+GHSA-848j-6mx2-7j84 elliptic
+GHSA-gh4j-gqv2-49f6 fast-xml-parser
+GHSA-hp3w-g68c-fv3c sprintf-js
+GHSA-hrr3-gc8f-f4qj fast-uri
+GHSA-q2hr-2g5m-vwhr brace-expansion
+GHSA-qhr7-859c-m2p7 brace-expansion
+GHSA-qw65-cvwx-89v3 fast-uri
+GHSA-rj75-hqrm-r3gf postcss-selector-parser
+GHSA-vfj7-8cjw-p6xm braces
+GHSA-x5fp-wj9c-mxmx qs
+
+# tokio-tungstenite (git, branche 0.26) epingle webpki-roots 0.26.x : pas de
+# version corrigee dans cette branche. La 1.x du workspace est a jour (1.0.10).
+# Reevaluer au bump du fork tokio-tungstenite.
+RUSTSEC-2026-0381 webpki-roots
