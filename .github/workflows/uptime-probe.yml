@@ -1,0 +1,164 @@
+name: Uptime FlowLINE (externe)
+
+# Watchdog hors site (ticket 0110) : tourne sur l'infrastructure GitHub, donc il voit
+# les pannes du réseau maison / RPi / ingress. Remplace le watchdog prévu sur
+# htz-backup-1 (archivé le 12.10) tant qu'aucun hôte off-site n'est disponible.
+#
+# Principe : 4 sondes toutes les 15 min. À la première panne → issue + Pushover (si
+# secrets posés) + email GitHub ; au rétablissement → clôture + Pushover. Pas de spam :
+# l'état vit dans l'issue, le job n'échoue qu'à la transition.
+#
+# Pushover (optionnel) : poser les secrets du dépôt PUSHOVER_TOKEN et PUSHOVER_USER
+# (Settings → Secrets and variables → Actions). Sans eux, seule l'issue/email fonctionne.
+#
+# ⚠ GitHub désactive les workflows planifiés après 60 jours sans activité du dépôt :
+#    nos commits réguliers l'évitent. En cas de doute, relancer « Run workflow ».
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+    inputs:
+      simulate:
+        description: "Simulation : none, down ou recovery"
+        required: false
+        default: "none"
+        type: choice
+        options: [none, down, recovery]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: Sondes + alerte
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
+      PUSHOVER_USER: ${{ secrets.PUSHOVER_USER }}
+      SIMULATE: ${{ inputs.simulate || 'none' }}
+    steps:
+      - name: Sondes
+        id: probe
+        run: |
+          set -u
+          failures=""
+          report=""
+
+          add_fail() { failures="${failures}$1"$'\n'; report="${report}- ❌ $1"$'\n'; }
+          add_ok()   { report="${report}- ✅ $1"$'\n'; }
+
+          http_check() { # libellé, URL, méthode, code attendu
+            local label="$1" url="$2" method="$3" expected="$4" code
+            if [ "$method" = "POST" ]; then
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+                -X POST -H 'Content-Type: application/json' -d '{}' "$url" 2>/dev/null || true)
+            else
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" 2>/dev/null || true)
+            fi
+            [ -n "$code" ] || code="000"
+            if [ "$code" = "$expected" ]; then add_ok "$label — HTTP $code"; else add_fail "$label — HTTP $code (attendu $expected)"; fi
+          }
+
+          # Relais : un GET nu renvoie 502 (hbbs ferme la connexion) → il faut un vrai handshake.
+          ws_check() { # libellé, URL
+            local label="$1" url="$2" code
+            code=$(curl -sk -o /dev/null -w '%{http_code}' --http1.1 --max-time 10 \
+              -H 'Connection: Upgrade' -H 'Upgrade: websocket' \
+              -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+              "$url" 2>/dev/null || true)
+            [ -n "$code" ] || code="000"
+            if [ "$code" = "101" ]; then add_ok "$label — WS 101"; else add_fail "$label — WS $code (attendu 101)"; fi
+          }
+
+          http_check "site www.flowline.support" "https://www.flowline.support/" GET 200
+          http_check "portail" "https://portal.flowline.support/" GET 200
+          http_check "API FlowLINE" "https://api-falcon.my-vth.ch/api/update/version/latest" POST 200
+          ws_check   "relais WSS (hbbs)" "https://falcon.my-vth.ch/ws/id"
+
+          case "$SIMULATE" in
+            down)     failures="SIMULATION : panne forcée"$'\n'; report="${report}- 🧪 simulation de panne"$'\n' ;;
+            recovery) failures="" ;;
+          esac
+
+          {
+            echo "failures<<EOF"
+            echo "$failures"
+            echo "EOF"
+            echo "report<<EOF"
+            echo "$report"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ -n "$failures" ]; then echo "::error::Sondes en échec"; else echo "Toutes les sondes sont vertes."; fi
+
+      - name: État de l'incident
+        id: state
+        run: |
+          gh label create incident-uptime --color B60205 \
+            --description "Incident de disponibilité FlowLINE (watchdog)" >/dev/null 2>&1 || true
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label incident-uptime \
+            --state open --json number --jq 'length')
+          echo "open=$open" >> "$GITHUB_OUTPUT"
+          echo "incidents ouverts : $open"
+
+      - name: Ouvrir l'incident + alerter
+        id: incident
+        if: steps.probe.outputs.failures != '' && steps.state.outputs.open == '0'
+        env:
+          REPORT: ${{ steps.probe.outputs.report }}
+        run: |
+          body=$(printf '%s\n\nSondé le %s (UTC) depuis GitHub Actions.\nWorkflow : %s/%s/actions/workflows/uptime-probe.yml\n' \
+            "$REPORT" "$(date -u +'%Y-%m-%d %H:%M')" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY")
+          gh issue create --repo "$GITHUB_REPOSITORY" --label incident-uptime \
+            --title "🔴 FlowLINE indisponible — $(date -u +'%Y-%m-%d %H:%M') UTC" \
+            --body "$body"
+          if [ -n "${PUSHOVER_TOKEN:-}" ] && [ -n "${PUSHOVER_USER:-}" ]; then
+            curl -s --max-time 10 -o /dev/null https://api.pushover.net/1/messages.json \
+              -F "token=$PUSHOVER_TOKEN" -F "user=$PUSHOVER_USER" \
+              -F "title=🔴 FlowLINE indisponible" \
+              -F "message=$REPORT" \
+              -F "priority=1" -F "url=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/issues"
+          else
+            echo "::warning::Secrets Pushover absents — alerte limitée à l'issue GitHub."
+          fi
+          echo "opened=true" >> "$GITHUB_OUTPUT"
+
+      - name: Rétablissement — clôturer + alerter
+        if: steps.probe.outputs.failures == '' && steps.state.outputs.open != '0'
+        run: |
+          issues=$(gh issue list --repo "$GITHUB_REPOSITORY" --label incident-uptime \
+            --state open --json number --jq '.[].number')
+          for n in $issues; do
+            gh issue comment "$n" --repo "$GITHUB_REPOSITORY" \
+              --body "✅ Rétabli — sondes vertes le $(date -u +'%Y-%m-%d %H:%M') UTC."
+            gh issue close "$n" --repo "$GITHUB_REPOSITORY" --reason completed
+          done
+          if [ -n "${PUSHOVER_TOKEN:-}" ] && [ -n "${PUSHOVER_USER:-}" ]; then
+            curl -s --max-time 10 -o /dev/null https://api.pushover.net/1/messages.json \
+              -F "token=$PUSHOVER_TOKEN" -F "user=$PUSHOVER_USER" \
+              -F "title=✅ FlowLINE rétabli" \
+              -F "message=Toutes les sondes sont vertes ($(date -u +'%Y-%m-%d %H:%M') UTC)."
+          fi
+
+      # Un seul échec de job par incident (à l'ouverture) → email GitHub, sans spam.
+      - name: Signaler l'échec (email GitHub)
+        if: steps.incident.outputs.opened == 'true'
+        run: exit 1
+
+      - name: Résumé
+        if: always()
+        run: |
+          {
+            echo "### Sondes FlowLINE"
+            echo "${{ steps.probe.outputs.report }}"
+            echo ""
+            echo "Incidents ouverts : ${{ steps.state.outputs.open }}"
+          } >> "$GITHUB_STEP_SUMMARY"
