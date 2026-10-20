@@ -148,7 +148,7 @@ jobs:
           targets: ${{ matrix.job.target }}
           components: "rustfmt"
 
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - uses: Swatinem/rust-cache@f0d9c3887740aee45f6153b24b3a6b815192ec16 # v2
         # Self-hosted : cache cargo local persistant (CARGO_TARGET_DIR) — inutile
         # d'uploader target/ vers le cache GitHub. Conservé pour le fallback hosted.
         if: runner.environment != 'self-hosted'
