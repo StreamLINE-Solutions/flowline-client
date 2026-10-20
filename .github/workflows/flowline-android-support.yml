@@ -117,7 +117,7 @@ jobs:
           # NDK r25+ : pas de binaire ndk-version (source.properties à la place).
           grep 'Pkg.ReleaseName' "$ANDROID_NDK_HOME/source.properties"
 
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - uses: Swatinem/rust-cache@f0d9c3887740aee45f6153b24b3a6b815192ec16 # v2
         with:
           prefix-key: linux-x64
           # cache-bin: rust-cache nettoie ~/.cargo/bin au post-job et supprime
