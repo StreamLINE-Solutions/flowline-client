@@ -185,7 +185,7 @@ jobs:
           zip -qry "$GITHUB_WORKSPACE/flowline-support-ios-unsigned-${{ env.VERSION }}.app.zip" Runner.app
 
       - name: Upload artifact (non signé)
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: flowline-support-ios-unsigned-${{ env.VERSION }}
           path: flowline-support-ios-unsigned-${{ env.VERSION }}.app.zip
@@ -193,7 +193,7 @@ jobs:
 
       - name: Upload artifact (IPA signée)
         if: ${{ inputs.signed }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: flowline-support-ios-${{ env.VERSION }}
           path: flutter/ios/build/ipa/*.ipa
