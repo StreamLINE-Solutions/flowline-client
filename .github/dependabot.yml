@@ -1,11 +1,17 @@
 version: 2
+# Hard fork (ticket 0112, décision 2026-10-20) : plus de suivi upstream.
+# - gitsubmodule : retiré (le sous-module pointe notre fork flowline-hbb-common,
+#   pas un dépôt amont — un bump automatique n'a pas de sens).
+# - cargo : volontairement absent (bruit très élevé sur un fork de cette taille ;
+#   la couverture CVE est assurée par osv-scanner hebdomadaire, workflow flowline-audit.yml).
 updates:
-  - package-ecosystem: "gitsubmodule"
+  - package-ecosystem: "github-actions"
     directory: "/"
-    target-branch: "master"
+    target-branch: "main"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    open-pull-requests-limit: 5
     commit-message:
-      prefix: "Git submodule"
+      prefix: "CI"
     labels:
       - "dependencies"

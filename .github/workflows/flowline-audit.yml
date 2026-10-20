@@ -1,8 +1,12 @@
 name: Audit dépendances FlowLINE
 
 on:
-  # Audit à la demande (pas de gate bloquant en push tant que l'arbre n'est pas
-  # à 0 HIGH — mitigations documentées dans le ticket 0049).
+  # Hard fork (ticket 0112, décision 20.10) : le scan devient CONTINU — hebdomadaire.
+  # Un audit ponctuel ne couvre pas les CVE publiées entre deux passages.
+  # Les runs planifiés nécessitent un runner self-hosted en ligne (sinon restent en file).
+  schedule:
+    - cron: "23 6 * * 1" # lundi 06:23 UTC (08:23 CEST)
+  # Audit à la demande.
   workflow_dispatch:
 
 # F14 (audit 21/09) : moindre privilège — le GITHUB_TOKEN du run ne peut que lire.
@@ -24,15 +28,56 @@ jobs:
         with:
           submodules: false
 
-      # Report-only : liste les vulns restantes (dont celles sans fix compatible
-      # MSRV 1.88) sans faire échouer le job.
-      - name: Scan Cargo.lock (report-only)
+      # Rapport lisible (toutes sévérités, y compris les avis « unmaintained »).
+      - name: Scan Cargo.lock (table, informatif)
         continue-on-error: true
         run: |
           docker run --rm -v "$PWD:/src" -w /src "$OSV_SCANNER_IMAGE" \
-            scan source --lockfile Cargo.lock --format table
+            scan source --lockfile Cargo.lock --format table || true
 
-      # Gate actif : le lock Dart est propre (0 vuln au 2026-09-17).
+      # Données pour la barrière ci-dessous.
+      - name: Scan Cargo.lock (JSON)
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src "$OSV_SCANNER_IMAGE" \
+            scan source --lockfile Cargo.lock --format json > "$RUNNER_TEMP/osv-cargo.json" || true
+
+      # Barrière : échec si HIGH/CRITICAL. Baseline du 20.10 = 0 HIGH/CRITICAL
+      # (2 MODERATE + 2 LOW acceptés, voir notes/audit/2026-10-20/).
+      - name: Gate Cargo.lock — échec si HIGH/CRITICAL
+        run: |
+          python3 - "$RUNNER_TEMP/osv-cargo.json" <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          try:
+              data = json.load(open(path))
+          except Exception as exc:  # scan cassé / JSON absent : on échoue bruyamment
+              print(f"JSON osv illisible ({exc}) — scan considéré en échec.")
+              sys.exit(1)
+
+          hits = []
+          for result in data.get("results", []):
+              for pkg in result.get("packages") or []:
+                  name = (pkg.get("package") or {}).get("name")
+                  version = (pkg.get("package") or {}).get("version")
+                  for vuln in pkg.get("vulnerabilities") or []:
+                      sev = ((vuln.get("database_specific") or {}).get("severity") or "").upper()
+                      if sev in ("HIGH", "CRITICAL"):
+                          hits.append(
+                              f"{sev:8} {name}@{version} {vuln.get('id')} — {(vuln.get('summary') or '')[:70]}"
+                          )
+
+          if hits:
+              print("Vulnérabilités HIGH/CRITICAL détectées :")
+              for hit in sorted(set(hits)):
+                  print(" -", hit)
+              sys.exit(1)
+
+          print("Aucune vulnérabilité HIGH/CRITICAL.")
+          PY
+
+      # Gate actif : le lock Dart est propre (0 vuln au 2026-09-17 et au 2026-10-20).
       - name: Scan pubspec.lock (Dart)
         run: |
           docker run --rm -v "$PWD:/src" -w /src "$OSV_SCANNER_IMAGE" \
