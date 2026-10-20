@@ -102,10 +102,10 @@ jobs:
       - name: État de l'incident
         id: state
         run: |
-          gh label create incident-uptime --color B60205 \
-            --description "Incident de disponibilité FlowLINE (watchdog)" >/dev/null 2>&1 || true
-          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label incident-uptime \
-            --state open --json number --jq 'length')
+          # Pas de label (le token du workflow ne peut pas en créer) : le titre sert d'état.
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 100 \
+            --json number,title \
+            --jq '[.[] | select(.title | startswith("🔴 FlowLINE indisponible"))] | length')
           echo "open=$open" >> "$GITHUB_OUTPUT"
           echo "incidents ouverts : $open"
 
@@ -117,7 +117,7 @@ jobs:
         run: |
           body=$(printf '%s\n\nSondé le %s (UTC) depuis GitHub Actions.\nWorkflow : %s/%s/actions/workflows/uptime-probe.yml\n' \
             "$REPORT" "$(date -u +'%Y-%m-%d %H:%M')" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY")
-          gh issue create --repo "$GITHUB_REPOSITORY" --label incident-uptime \
+          gh issue create --repo "$GITHUB_REPOSITORY" \
             --title "🔴 FlowLINE indisponible — $(date -u +'%Y-%m-%d %H:%M') UTC" \
             --body "$body"
           if [ -n "${PUSHOVER_TOKEN:-}" ] && [ -n "${PUSHOVER_USER:-}" ]; then
@@ -134,8 +134,9 @@ jobs:
       - name: Rétablissement — clôturer + alerter
         if: steps.probe.outputs.failures == '' && steps.state.outputs.open != '0'
         run: |
-          issues=$(gh issue list --repo "$GITHUB_REPOSITORY" --label incident-uptime \
-            --state open --json number --jq '.[].number')
+          issues=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 100 \
+            --json number,title \
+            --jq '.[] | select(.title | startswith("🔴 FlowLINE indisponible")) | .number')
           for n in $issues; do
             gh issue comment "$n" --repo "$GITHUB_REPOSITORY" \
               --body "✅ Rétabli — sondes vertes le $(date -u +'%Y-%m-%d %H:%M') UTC."
